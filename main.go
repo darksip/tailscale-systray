@@ -36,12 +36,25 @@ func executable(command string) bool {
 	return err == nil
 }
 
+func execCommand(command string, verb string) ([]byte, error) {
+	switch runtime.GOOS {
+	case "darwin":
+		return exec.Command(command, verb).CombinedOutput()
+	case "windows":
+		return exec.Command(command, verb).CombinedOutput()
+	case "linux":
+		return exec.Command("pkexec", command, verb).CombinedOutput()
+	default:
+		return exec.Command(command, verb).CombinedOutput()
+	}
+}
+
 func doConnectionControl(m *systray.MenuItem, verb string) {
 	for {
 		if _, ok := <-m.ClickedCh; !ok {
 			break
 		}
-		b, err := exec.Command("pkexec", "tailscale", verb).CombinedOutput()
+		b, err := execCommand("tailscale", verb)
 		if err != nil {
 			beeep.Notify(
 				"Tailscale",
@@ -60,13 +73,8 @@ func onReady() {
 	mDisconnect := systray.AddMenuItem("Disconnect", "")
 	mDisconnect.Disable()
 
-	if executable("pkexec") {
-		go doConnectionControl(mConnect, "up")
-		go doConnectionControl(mDisconnect, "down")
-	} else {
-		mConnect.Hide()
-		mDisconnect.Hide()
-	}
+	go doConnectionControl(mConnect, "up")
+	go doConnectionControl(mDisconnect, "down")
 
 	systray.AddSeparator()
 
@@ -100,6 +108,7 @@ func onReady() {
 
 	systray.AddSeparator()
 	mAdminConsole := systray.AddMenuItem("Admin Console...", "")
+
 	go func() {
 		for {
 			_, ok := <-mAdminConsole.ClickedCh
