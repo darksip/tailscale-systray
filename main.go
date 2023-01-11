@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,8 @@ import (
 	"github.com/atotto/clipboard"
 	"github.com/gen2brain/beeep"
 	"github.com/getlantern/systray"
+
+	"tailscale.com/client/tailscale"
 )
 
 var (
@@ -25,8 +28,19 @@ var (
 	mu   sync.RWMutex
 	myIP string
 )
+var localClient tailscale.LocalClient
 
 func main() {
+
+	log.Printf("getting localClient...")
+	getStatus := localClient.Status
+	st, err := getStatus(context.TODO())
+
+	if err == nil {
+		log.Printf("api client version %s", st.Version)
+	} else {
+		log.Printf("%s", err.Error())
+	}
 	log.Printf("launching systray...")
 	systray.Run(onReady, nil)
 }

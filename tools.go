@@ -24,11 +24,6 @@ func openBrowser(url string) {
 	}
 }
 
-func executable(command string) bool {
-	_, err := exec.LookPath(command)
-	return err == nil
-}
-
 func execCommand(command string, verb string) ([]byte, error) {
 	switch runtime.GOOS {
 	case "darwin":
