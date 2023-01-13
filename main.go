@@ -28,6 +28,16 @@ var (
 	mu   sync.RWMutex
 	myIP string
 )
+
+// add logout entry (hidden in prod)
+
+// set login-url as a variable in registry
+
+// implement the OIDC scenario to
+
+// add an entry to specify a preshared key
+
+// tailscale local client to use for IPN
 var localClient tailscale.LocalClient
 
 func main() {
@@ -38,6 +48,9 @@ func main() {
 
 	if err == nil {
 		log.Printf("api client version %s", st.Version)
+		log.Printf("api auth url:  %s", st.AuthURL)
+		//cfg := localClient.
+
 	} else {
 		log.Printf("%s", err.Error())
 	}
@@ -45,15 +58,17 @@ func main() {
 	systray.Run(onReady, nil)
 }
 
+// change the function to pass mandatory parameters with login-url
 func doConnectionControl(m *systray.MenuItem, verb string) {
 	for {
 		if _, ok := <-m.ClickedCh; !ok {
 			break
 		}
+		log.Printf("launch command: tailscale %s", verb)
 		b, err := execCommand("tailscale", verb)
 		if err != nil {
 			beeep.Notify(
-				"Tailscale",
+				"Cyber Vpn",
 				string(b),
 				"",
 			)
@@ -122,6 +137,10 @@ func onReady() {
 		<-mExit.ClickedCh
 		systray.Quit()
 	}()
+
+	systray.AddSeparator()
+	mLogout := systray.AddMenuItem("Logout...", "")
+	go doConnectionControl(mLogout, "logout")
 
 	go func() {
 		type Item struct {
