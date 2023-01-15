@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os/exec"
 	"sync"
 	"time"
 
@@ -25,11 +24,11 @@ var (
 )
 
 var (
-	mu           sync.RWMutex
-	myIP         string
-	localClient  tailscale.LocalClient
-	loadError    = false
-	needsLogin   = false
+	mu          sync.RWMutex
+	myIP        string
+	localClient tailscale.LocalClient
+	//loadError    = false
+	//needsLogin   = false
 	errorMessage = ""
 )
 
@@ -76,12 +75,12 @@ func waitForLogin(m *systray.MenuItem) {
 	}
 }
 
-func waitForClickAndNotify(m *systray.MenuItem, message string) {
+func waitForClickAndNotify(m *systray.MenuItem) {
 	for {
 		<-m.ClickedCh
 		beeep.Notify(
 			appName,
-			message,
+			errorMessage,
 			"",
 		)
 	}
@@ -97,28 +96,37 @@ func waitForClickAndOpenBrowser(m *systray.MenuItem, url string) {
 	}
 }
 
+func waitForClickAndCopyIpToClipboard(m *systray.MenuItem) {
+	for {
+		_, ok := <-m.ClickedCh
+		if !ok {
+			break
+		}
+		mu.RLock()
+		if myIP == "" {
+			mu.RUnlock()
+			continue
+		}
+		err := clipboard.WriteAll(myIP)
+		if err == nil {
+			beeep.Notify(
+				"This device",
+				fmt.Sprintf("Copy the IP address (%s) to the Clipboard", myIP),
+				"",
+			)
+		}
+		mu.RUnlock()
+	}
+}
+
 func onReady() {
 
 	log.Printf("getting localClient...")
 	getStatus := localClient.Status
-	st, err := getStatus(context.TODO())
 
-	if err == nil {
-		log.Printf("api client version %s", st.Version)
-		log.Printf("api auth url:  %s", st.AuthURL)
-		log.Printf("backend state:  %s", st.BackendState)
-		log.Printf("self hostename:  %s", st.Self.HostName)
-		for k, v := range st.User {
-			log.Printf("user: k:%s, v:%s", k, v.LoginName)
-		}
-		needsLogin = (st.BackendState == "NeedsLogin")
-
-	} else {
-		// beep the error
-		log.Printf("%s", err.Error())
-		loadError = true
-		errorMessage = err.Error()
-	}
+	st, _ := getStatus(context.TODO())
+	bs, _ := json.Marshal(st)
+	fmt.Println(string(bs))
 
 	systray.SetIcon(iconOff)
 
@@ -126,7 +134,7 @@ func onReady() {
 
 	mError := systray.AddMenuItem("Show Error", "")
 	mError.Hide()
-	go waitForClickAndNotify(mError, errorMessage)
+	go waitForClickAndNotify(mError)
 
 	mLogin := systray.AddMenuItem("Login...", "")
 	mLogin.Hide()
@@ -144,12 +152,13 @@ func onReady() {
 	systray.AddSeparator()
 	mThisDevice := systray.AddMenuItem("This device:", "")
 	mThisDevice.Hide()
+	go waitForClickAndCopyIpToClipboard(mThisDevice)
 
 	systray.AddSeparator()
 	mNetworkDevices := systray.AddMenuItem("Network Devices", "")
 	mNetworkDevices.Hide()
 	mMyDevices := mNetworkDevices.AddSubMenuItem("My Devices", "")
-	mTailscaleServices := mNetworkDevices.AddSubMenuItem("Tailscale Services", "")
+	//mTailscaleServices := mNetworkDevices.AddSubMenuItem("Tailscale Services", "")
 
 	systray.AddSeparator()
 	mAdminConsole := systray.AddMenuItem("Admin Console...", "")
@@ -166,39 +175,6 @@ func onReady() {
 
 	systray.AddSeparator()
 
-	go func(mThisDevice *systray.MenuItem) {
-		for {
-			_, ok := <-mThisDevice.ClickedCh
-			if !ok {
-				break
-			}
-			mu.RLock()
-			if myIP == "" {
-				mu.RUnlock()
-				continue
-			}
-			err := clipboard.WriteAll(myIP)
-			if err == nil {
-				beeep.Notify(
-					"This device",
-					fmt.Sprintf("Copy the IP address (%s) to the Clipboard", myIP),
-					"",
-				)
-			}
-			mu.RUnlock()
-		}
-	}(mThisDevice)
-
-	go func() {
-		for {
-			_, ok := <-mAdminConsole.ClickedCh
-			if !ok {
-				break
-			}
-			openBrowser(rootUrl + "/web")
-		}
-	}()
-
 	go func() {
 		type Item struct {
 			menu  *systray.MenuItem
@@ -208,65 +184,81 @@ func onReady() {
 		}
 		items := map[string]*Item{}
 
-		enabled := false
-		setDisconnected := func() {
-			if enabled {
-				systray.SetTooltip(appName + ": Disconnected")
-				mConnect.Show()
-				mLogin.Hide()
-				mDisconnect.Hide()
-				systray.SetIcon(iconOff)
-				enabled = false
-			}
-		}
-
 		for {
-			rawStatus, err := exec.Command("tailscale", "status", "--json").Output()
-			if err != nil {
-				setDisconnected()
-				continue
-			}
+			time.Sleep(3 * time.Second)
+			status, err := getStatus(context.TODO())
+			//log.Printf("%s", status.Self.HostName)
 
-			status := new(Status)
-			if err := json.Unmarshal(rawStatus, status); err != nil {
-				setDisconnected()
+			if err != nil {
+				//loadError = true
+				errorMessage = err.Error()
+				log.Printf("%s", errorMessage)
+				systray.SetTooltip(appName + ": Api Error")
+				mConnect.Hide()
+				mDisconnect.Hide()
+				mError.Show()
+				mLogin.Hide()
+				mLogout.Hide()
+				mThisDevice.Hide()
+				mMyDevices.Hide()
+				systray.SetIcon(iconOff)
 				continue
+			} else {
+				//loadError = false
+				errorMessage = ""
+				mError.Hide()
+				switch status.BackendState {
+				case "NeedsLogin":
+					mLogin.Show()
+					mLogout.Hide()
+					mThisDevice.Hide()
+					mConnect.Hide()
+					mDisconnect.Hide()
+					mMyDevices.Hide()
+					systray.SetTooltip(appName + ": Needs Login")
+					systray.SetIcon(iconOff)
+				case "Stopped":
+					mLogin.Hide()
+					mLogout.Show()
+					mConnect.Show()
+					mDisconnect.Hide()
+					mMyDevices.Show()
+					mThisDevice.Show()
+					systray.SetIcon(iconOff)
+					systray.SetTooltip(appName + ": Stopped")
+				case "Running", "Starting":
+					mLogin.Hide()
+					mLogout.Show()
+					mConnect.Hide()
+					mDisconnect.Show()
+					mMyDevices.Show()
+					mThisDevice.Show()
+					systray.SetIcon(iconOn)
+					systray.SetTooltip(appName + ": " + status.BackendState)
+				}
 			}
 
 			mu.Lock()
-			if len(status.Self.TailscaleIPs) != 0 {
-				myIP = status.Self.TailscaleIPs[0]
+
+			if len(status.TailscaleIPs) != 0 {
+
+				myIP = status.TailscaleIPs[1].String()
+				log.Printf("my ip: %s", myIP)
 			}
 			mu.Unlock()
-
-			if status.TailscaleUp && !enabled {
-				systray.SetTooltip(appName + ": Connected")
-				mConnect.Disable()
-				mDisconnect.Enable()
-				systray.SetIcon(iconOn)
-				enabled = true
-			} else if !status.TailscaleUp && enabled {
-				setDisconnected()
-			}
 
 			for _, v := range items {
 				v.found = false
 			}
 
-			mThisDevice.SetTitle(fmt.Sprintf("This device: %s (%s)", status.Self.DisplayName.String(), myIP))
+			mThisDevice.SetTitle(fmt.Sprintf("This device: %s (%s)", status.Self.HostName, myIP))
 
-			for _, peer := range status.Peers {
-				ip := peer.TailscaleIPs[0]
-				peerName := peer.DisplayName
-				title := peerName.String()
+			for _, ps := range status.Peer {
+				ip := ps.TailscaleIPs[0].String()
+				peerName := ps.DNSName
+				title := peerName
 
-				var sub *systray.MenuItem
-				switch peerName.(type) {
-				case DNSName:
-					sub = mMyDevices
-				case HostName:
-					sub = mTailscaleServices
-				}
+				sub := mMyDevices
 
 				if item, ok := items[title]; ok {
 					item.found = true
@@ -311,7 +303,6 @@ func onReady() {
 				}
 			}
 
-			time.Sleep(10 * time.Second)
 		}
 	}()
 }
