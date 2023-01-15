@@ -42,19 +42,6 @@ var localClient tailscale.LocalClient
 
 func main() {
 
-	log.Printf("getting localClient...")
-	getStatus := localClient.Status
-	st, err := getStatus(context.TODO())
-
-	if err == nil {
-		log.Printf("api client version %s", st.Version)
-		log.Printf("api auth url:  %s", st.AuthURL)
-		//cfg := localClient.
-
-	} else {
-		log.Printf("%s", err.Error())
-	}
-	log.Printf("launching systray...")
 	systray.Run(onReady, nil)
 }
 
@@ -77,6 +64,24 @@ func doConnectionControl(m *systray.MenuItem, verb string) {
 }
 
 func onReady() {
+
+	log.Printf("getting localClient...")
+	getStatus := localClient.Status
+	st, err := getStatus(context.TODO())
+
+	if err == nil {
+		log.Printf("api client version %s", st.Version)
+		log.Printf("api auth url:  %s", st.AuthURL)
+		log.Printf("backend state:  %s", st.BackendState)
+		log.Printf("self hostename:  %s", st.Self.HostName)
+		for k, v := range st.User {
+			log.Printf("user: k:%s, v:%s", k, v.LoginName)
+		}
+
+	} else {
+		log.Printf("%s", err.Error())
+	}
+
 	systray.SetIcon(iconOff)
 
 	mConnect := systray.AddMenuItem("Connect", "")
