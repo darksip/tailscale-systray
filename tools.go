@@ -7,6 +7,10 @@ import (
 	"runtime"
 )
 
+var rootUrl = "https://head.cyberfile.fr"
+var adminUrl = rootUrl + "/web"
+var appName = "CyberVpn"
+
 func openBrowser(url string) {
 	var err error
 	switch runtime.GOOS {

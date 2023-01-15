@@ -25,11 +25,13 @@ var (
 )
 
 var (
-	mu   sync.RWMutex
-	myIP string
+	mu           sync.RWMutex
+	myIP         string
+	localClient  tailscale.LocalClient
+	loadError    = false
+	needsLogin   = false
+	errorMessage = ""
 )
-
-// add logout entry (hidden in prod)
 
 // set login-url as a variable in registry
 
@@ -38,10 +40,8 @@ var (
 // add an entry to specify a preshared key
 
 // tailscale local client to use for IPN
-var localClient tailscale.LocalClient
 
 func main() {
-
 	systray.Run(onReady, nil)
 }
 
@@ -63,6 +63,40 @@ func doConnectionControl(m *systray.MenuItem, verb string) {
 	}
 }
 
+func exitSystray(m *systray.MenuItem) {
+	<-m.ClickedCh
+	systray.Quit()
+}
+
+func waitForLogin(m *systray.MenuItem) {
+	for {
+		<-m.ClickedCh
+		log.Printf("Do login by opening browser")
+		m.Disable()
+	}
+}
+
+func waitForClickAndNotify(m *systray.MenuItem, message string) {
+	for {
+		<-m.ClickedCh
+		beeep.Notify(
+			appName,
+			message,
+			"",
+		)
+	}
+}
+
+func waitForClickAndOpenBrowser(m *systray.MenuItem, url string) {
+	for {
+		_, ok := <-m.ClickedCh
+		if !ok {
+			break
+		}
+		openBrowser(url)
+	}
+}
+
 func onReady() {
 
 	log.Printf("getting localClient...")
@@ -77,24 +111,61 @@ func onReady() {
 		for k, v := range st.User {
 			log.Printf("user: k:%s, v:%s", k, v.LoginName)
 		}
+		needsLogin = (st.BackendState == "NeedsLogin")
 
 	} else {
+		// beep the error
 		log.Printf("%s", err.Error())
+		loadError = true
+		errorMessage = err.Error()
 	}
 
 	systray.SetIcon(iconOff)
 
-	mConnect := systray.AddMenuItem("Connect", "")
-	mConnect.Enable()
-	mDisconnect := systray.AddMenuItem("Disconnect", "")
-	mDisconnect.Disable()
+	// compose complete menu with hidden options
 
+	mError := systray.AddMenuItem("Show Error", "")
+	mError.Hide()
+	go waitForClickAndNotify(mError, errorMessage)
+
+	mLogin := systray.AddMenuItem("Login...", "")
+	mLogin.Hide()
+	go waitForLogin(mLogin)
+
+	systray.AddSeparator()
+	mConnect := systray.AddMenuItem("Connect", "")
+	mConnect.Hide()
 	go doConnectionControl(mConnect, "up")
+
+	mDisconnect := systray.AddMenuItem("Disconnect", "")
+	mDisconnect.Hide()
 	go doConnectionControl(mDisconnect, "down")
 
 	systray.AddSeparator()
-
 	mThisDevice := systray.AddMenuItem("This device:", "")
+	mThisDevice.Hide()
+
+	systray.AddSeparator()
+	mNetworkDevices := systray.AddMenuItem("Network Devices", "")
+	mNetworkDevices.Hide()
+	mMyDevices := mNetworkDevices.AddSubMenuItem("My Devices", "")
+	mTailscaleServices := mNetworkDevices.AddSubMenuItem("Tailscale Services", "")
+
+	systray.AddSeparator()
+	mAdminConsole := systray.AddMenuItem("Admin Console...", "")
+	go waitForClickAndOpenBrowser(mAdminConsole, adminUrl)
+
+	systray.AddSeparator()
+	mExit := systray.AddMenuItem("Exit", "")
+	go exitSystray(mExit)
+
+	systray.AddSeparator()
+	mLogout := systray.AddMenuItem("Logout...", "")
+	mLogout.Hide()
+	go doConnectionControl(mLogout, "logout")
+
+	systray.AddSeparator()
+
 	go func(mThisDevice *systray.MenuItem) {
 		for {
 			_, ok := <-mThisDevice.ClickedCh
@@ -118,34 +189,15 @@ func onReady() {
 		}
 	}(mThisDevice)
 
-	mNetworkDevices := systray.AddMenuItem("Network Devices", "")
-	mMyDevices := mNetworkDevices.AddSubMenuItem("My Devices", "")
-	mTailscaleServices := mNetworkDevices.AddSubMenuItem("Tailscale Services", "")
-
-	systray.AddSeparator()
-	mAdminConsole := systray.AddMenuItem("Admin Console...", "")
-
 	go func() {
 		for {
 			_, ok := <-mAdminConsole.ClickedCh
 			if !ok {
 				break
 			}
-			openBrowser("https://login.tailscale.com/admin/machines")
+			openBrowser(rootUrl + "/web")
 		}
 	}()
-
-	systray.AddSeparator()
-
-	mExit := systray.AddMenuItem("Exit", "")
-	go func() {
-		<-mExit.ClickedCh
-		systray.Quit()
-	}()
-
-	systray.AddSeparator()
-	mLogout := systray.AddMenuItem("Logout...", "")
-	go doConnectionControl(mLogout, "logout")
 
 	go func() {
 		type Item struct {
@@ -159,9 +211,10 @@ func onReady() {
 		enabled := false
 		setDisconnected := func() {
 			if enabled {
-				systray.SetTooltip("Tailscale: Disconnected")
-				mConnect.Enable()
-				mDisconnect.Disable()
+				systray.SetTooltip(appName + ": Disconnected")
+				mConnect.Show()
+				mLogin.Hide()
+				mDisconnect.Hide()
 				systray.SetIcon(iconOff)
 				enabled = false
 			}
@@ -187,7 +240,7 @@ func onReady() {
 			mu.Unlock()
 
 			if status.TailscaleUp && !enabled {
-				systray.SetTooltip("Tailscale: Connected")
+				systray.SetTooltip(appName + ": Connected")
 				mConnect.Disable()
 				mDisconnect.Enable()
 				systray.SetIcon(iconOn)
@@ -234,7 +287,7 @@ func onReady() {
 							err := clipboard.WriteAll(item.ip)
 							if err != nil {
 								beeep.Notify(
-									"Tailscale",
+									appName,
 									err.Error(),
 									"",
 								)
