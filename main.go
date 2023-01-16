@@ -72,6 +72,24 @@ func waitForLogin(m *systray.MenuItem) {
 		<-m.ClickedCh
 		log.Printf("Do login by opening browser")
 		m.Disable()
+		// exec login command with timeout 3s
+		_, err := execCommand("tailscale", "login", "--login-server", rootUrl, "--timeout", "3s")
+		// check Authurl
+		if err != nil {
+			st, _ := localClient.Status(context.TODO())
+
+			openBrowser(st.AuthURL)
+			// wait for status change
+			for {
+				time.Sleep(5 * time.Second)
+				st, _ := localClient.Status(context.TODO())
+				if st.BackendState != "NeedsLogin" {
+					break
+				}
+			}
+		}
+		// enable menu Login (it will be hidden by another routine)
+		m.Enable()
 	}
 }
 
@@ -241,7 +259,6 @@ func onReady() {
 			mu.Lock()
 
 			if len(status.TailscaleIPs) != 0 {
-
 				myIP = status.TailscaleIPs[1].String()
 				log.Printf("my ip: %s", myIP)
 			}

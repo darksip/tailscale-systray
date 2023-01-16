@@ -28,15 +28,16 @@ func openBrowser(url string) {
 	}
 }
 
-func execCommand(command string, verb string) ([]byte, error) {
+func execCommand(command string, verb ...string) ([]byte, error) {
 	switch runtime.GOOS {
 	case "darwin":
-		return exec.Command(command, verb).CombinedOutput()
+		return exec.Command(command, verb...).CombinedOutput()
 	case "windows":
-		return exec.Command(command, verb).CombinedOutput()
+		return exec.Command(command, verb...).CombinedOutput()
 	case "linux":
-		return exec.Command("pkexec", command, verb).CombinedOutput()
+		allverbs := append([]string{command}, verb...)
+		return exec.Command("pkexec", allverbs...).CombinedOutput()
 	default:
-		return exec.Command(command, verb).CombinedOutput()
+		return exec.Command(command, verb...).CombinedOutput()
 	}
 }
