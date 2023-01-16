@@ -174,7 +174,7 @@ func onReady() {
 
 	systray.AddSeparator()
 	mNetworkDevices := systray.AddMenuItem("Network Devices", "")
-	mNetworkDevices.Hide()
+	mNetworkDevices.Show()
 	mMyDevices := mNetworkDevices.AddSubMenuItem("My Devices", "")
 	//mTailscaleServices := mNetworkDevices.AddSubMenuItem("Tailscale Services", "")
 
@@ -240,8 +240,8 @@ func onReady() {
 					mLogout.Show()
 					mConnect.Show()
 					mDisconnect.Hide()
-					mMyDevices.Show()
-					mThisDevice.Show()
+					mMyDevices.Hide()
+					mThisDevice.Hide()
 					systray.SetIcon(iconOff)
 					systray.SetTooltip(appName + ": Stopped")
 				case "Running", "Starting":
@@ -271,7 +271,7 @@ func onReady() {
 			mThisDevice.SetTitle(fmt.Sprintf("This device: %s (%s)", status.Self.HostName, myIP))
 
 			for _, ps := range status.Peer {
-				ip := ps.TailscaleIPs[0].String()
+				ip := ps.TailscaleIPs[1].String()
 				peerName := ps.DNSName
 				title := peerName
 
