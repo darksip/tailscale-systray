@@ -12,12 +12,14 @@ var adminUrl = rootUrl + "/web"
 var appName = "CyberVpn"
 
 func openBrowser(url string) {
+	log.Printf("open url : %s", url)
 	var err error
 	switch runtime.GOOS {
 	case "linux":
 		err = exec.Command("xdg-open", url).Start()
 	case "windows":
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+		//err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+		err = exec.Command("cmd", "/c", "start", url).Start()
 	case "darwin":
 		err = exec.Command("open", url).Start()
 	default:

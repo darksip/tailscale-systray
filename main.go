@@ -26,8 +26,8 @@ var (
 	iconOnIco []byte
 	//go:embed icon/off.ico
 	iconOffIco []byte
-	iconOn []byte
-	iconOff []byte
+	iconOn     []byte
+	iconOff    []byte
 )
 
 var (
@@ -76,27 +76,35 @@ func exitSystray(m *systray.MenuItem) {
 	systray.Quit()
 }
 
+func doLogin() {
+	log.Printf("Do login by opening browser")
+	// exec login command with timeout 3s
+	_, err := execCommand("tailscale", "login", "--login-server", rootUrl, "--timeout", "3s")
+	// check Authurl
+	if err != nil {
+
+		st, _ := localClient.Status(context.TODO())
+		bs, _ := json.Marshal(st)
+		fmt.Println(string(bs))
+		openBrowser(st.AuthURL)
+		// wait for status change
+		for {
+			time.Sleep(5 * time.Second)
+			st, _ := localClient.Status(context.TODO())
+			if st.BackendState != "NeedsLogin" {
+				break
+			}
+		}
+	} else {
+		log.Printf(err.Error())
+	}
+}
+
 func waitForLogin(m *systray.MenuItem) {
 	for {
 		<-m.ClickedCh
-		log.Printf("Do login by opening browser")
 		m.Disable()
-		// exec login command with timeout 3s
-		_, err := execCommand("tailscale", "login", "--login-server", rootUrl, "--timeout", "3s")
-		// check Authurl
-		if err != nil {
-			st, _ := localClient.Status(context.TODO())
-
-			openBrowser(st.AuthURL)
-			// wait for status change
-			for {
-				time.Sleep(5 * time.Second)
-				st, _ := localClient.Status(context.TODO())
-				if st.BackendState != "NeedsLogin" {
-					break
-				}
-			}
-		}
+		doLogin()
 		// enable menu Login (it will be hidden by another routine)
 		m.Enable()
 	}
@@ -149,15 +157,15 @@ func waitForClickAndCopyIpToClipboard(m *systray.MenuItem) {
 func onReady() {
 
 	log.Printf("parsing args")
-	var autologin = flag.String("autologin","","")
+	var autologin = flag.Bool("autologin", false, "")
 	flag.Parse()
-	log.Printf("autologin= %s",autologin)
+	log.Printf("autologin= %t", *autologin)
 	log.Printf("getting localClient...")
 	getStatus := localClient.Status
 
 	st, _ := getStatus(context.TODO())
-	bs, _ := json.Marshal(st)
-	fmt.Println(string(bs))
+	//bs, _ := json.Marshal(st)
+	//fmt.Println(string(bs))
 
 	systray.SetIcon(iconOff)
 
@@ -205,6 +213,10 @@ func onReady() {
 	go doConnectionControl(mLogout, "logout")
 
 	systray.AddSeparator()
+
+	if *autologin && (st.BackendState == "NeedsLogin") {
+		doLogin()
+	}
 
 	go func() {
 		type Item struct {
