@@ -18,8 +18,14 @@ import (
 
 var (
 	//go:embed icon/on.png
-	iconOn []byte
+	iconOnPng []byte
 	//go:embed icon/off.png
+	iconOffPng []byte
+	//go:embed icon/on.ico
+	iconOnIco []byte
+	//go:embed icon/off.ico
+	iconOffIco []byte
+	iconOn []byte
 	iconOff []byte
 )
 
@@ -41,6 +47,8 @@ var (
 // tailscale local client to use for IPN
 
 func main() {
+	iconOn = iconOnIco
+	iconOff = iconOffIco
 	systray.Run(onReady, nil)
 }
 
