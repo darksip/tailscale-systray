@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"sync"
@@ -147,6 +148,10 @@ func waitForClickAndCopyIpToClipboard(m *systray.MenuItem) {
 
 func onReady() {
 
+	log.Printf("parsing args")
+	var autologin = flag.String("autologin","","")
+	flag.Parse()
+	log.Printf("autologin= %s",autologin)
 	log.Printf("getting localClient...")
 	getStatus := localClient.Status
 
