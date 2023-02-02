@@ -60,8 +60,8 @@ func doConnectionControl(m *systray.MenuItem, verb string) {
 		if _, ok := <-m.ClickedCh; !ok {
 			break
 		}
-		log.Printf("launch command: tailscale %s", verb)
-		b, err := execCommand("tailscale", verb)
+		//log.Printf("launch command: tailscale %s", verb)
+		b, err := execCommand("cybervpn-cli", verb)
 		if err != nil {
 			beeep.Notify(
 				"Cyber Vpn",
@@ -88,18 +88,14 @@ func parseForHttps(out []byte) string {
 }
 
 func doLogin() {
+
 	log.Printf("Do login by opening browser")
 	// exit Node ?
 	exitNodeParam := ""
 
-	if len(exitNode) > 0 {
-		log.Printf("we have an exit node : %s", exitNode)
-		exitNodeParam = fmt.Sprintf("--exit-node=%s", exitNode)
-	}
-
 	// exec login command with timeout 3s
 
-	out, err := execCommand("tailscale", "login", "--login-server", rootUrl, "--accept-routes", "--unattended", "--timeout", "3s", exitNodeParam)
+	out, err := execCommand("cybervpn-cli", "login", "--login-server", rootUrl, "--accept-routes", "--unattended", "--timeout", "3s")
 	// check Authurl
 	if err != nil {
 		urlLogin := strings.TrimSpace(parseForHttps(out))
@@ -114,6 +110,17 @@ func doLogin() {
 					break
 				}
 			}
+			// check for the needs of a needs of an exit node
+			refreshExitNode()
+			if len(exitNode) > 0 {
+				log.Printf("we have an exit node : %s", exitNode)
+				exitNodeParam = fmt.Sprintf("--exit-node=%s", exitNode)
+				_, errset := execCommand("cybervpn-cli", "set", exitNodeParam)
+				if errset != nil {
+					log.Printf(errset.Error())
+				}
+			}
+			//log.Print(exitNodeParam)
 		}
 	} else {
 		log.Printf(err.Error())
@@ -174,6 +181,25 @@ func waitForClickAndCopyIpToClipboard(m *systray.MenuItem) {
 	}
 }
 
+func refreshExitNode() {
+
+	getStatus := localClient.Status
+	status, err := getStatus(context.TODO())
+	if err == nil {
+		//log.Print("----------------------------------")
+		for _, ps := range status.Peer {
+			if len(ps.TailscaleIPs) != 0 {
+				peerIP := ps.TailscaleIPs[1].String()
+				//log.Printf("peer %s (%s): EN: %t ENOption: %t", ps.HostName, peerIP, ps.ExitNode, ps.ExitNodeOption)
+				if ps.ExitNodeOption {
+					exitNode = peerIP
+					break
+				}
+			}
+		}
+	}
+}
+
 func onReady() {
 
 	log.Printf("parsing args")
@@ -221,6 +247,7 @@ func onReady() {
 
 	systray.AddSeparator()
 	mAdminConsole := systray.AddMenuItem("Admin Console...", "")
+	mAdminConsole.Disable()
 	go waitForClickAndOpenBrowser(mAdminConsole, adminUrl)
 
 	systray.AddSeparator()
@@ -246,21 +273,6 @@ func onReady() {
 			found bool
 		}
 		items := map[string]*Item{}
-
-		status, err := getStatus(context.TODO())
-		if err == nil {
-			log.Print("----------------------------------")
-			for _, ps := range status.Peer {
-				if len(ps.TailscaleIPs) != 0 {
-					peerIP := ps.TailscaleIPs[1].String()
-					log.Printf("peer %s (%s): EN: %t ENOption: %t", ps.HostName, peerIP, ps.ExitNode, ps.ExitNodeOption)
-					if ps.ExitNodeOption {
-						exitNode = peerIP
-						break
-					}
-				}
-			}
-		}
 
 		for {
 			time.Sleep(3 * time.Second)
