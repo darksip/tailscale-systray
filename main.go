@@ -60,6 +60,8 @@ func doConnectionControl(m *systray.MenuItem, verb string) {
 		if _, ok := <-m.ClickedCh; !ok {
 			break
 		}
+		bsBefore := getBackenState()
+		log.Printf("state before : %s", bsBefore)
 		//log.Printf("launch command: tailscale %s", verb)
 		b, err := execCommand("cybervpn-cli", verb)
 		if err != nil {
@@ -68,6 +70,11 @@ func doConnectionControl(m *systray.MenuItem, verb string) {
 				string(b),
 				"",
 			)
+		}
+		bsAfter := getBackenState()
+		log.Printf("state after : %s", bsAfter)
+		if (bsBefore != bsAfter) && (bsAfter == "Running") {
+			setExitNode()
 		}
 	}
 }
@@ -87,11 +94,27 @@ func parseForHttps(out []byte) string {
 	return ""
 }
 
+func getBackenState() string {
+	st, _ := localClient.Status(context.TODO())
+	return st.BackendState
+}
+
+func setExitNode() {
+	refreshExitNode()
+	if len(exitNode) > 0 {
+		log.Printf("we have an exit node : %s", exitNode)
+		exitNodeParam := fmt.Sprintf("--exit-node=%s", exitNode)
+		_, errset := execCommand("cybervpn-cli", "set", exitNodeParam)
+		if errset != nil {
+			log.Printf(errset.Error())
+		}
+	}
+}
+
 func doLogin() {
 
 	log.Printf("Do login by opening browser")
 	// exit Node ?
-	exitNodeParam := ""
 
 	// exec login command with timeout 3s
 
@@ -105,21 +128,13 @@ func doLogin() {
 			// wait for status change
 			for {
 				time.Sleep(5 * time.Second)
-				st, _ := localClient.Status(context.TODO())
-				if st.BackendState != "NeedsLogin" {
+				//st, _ := localClient.Status(context.TODO())
+				if getBackenState() != "NeedsLogin" {
 					break
 				}
 			}
 			// check for the needs of a needs of an exit node
-			refreshExitNode()
-			if len(exitNode) > 0 {
-				log.Printf("we have an exit node : %s", exitNode)
-				exitNodeParam = fmt.Sprintf("--exit-node=%s", exitNode)
-				_, errset := execCommand("cybervpn-cli", "set", exitNodeParam)
-				if errset != nil {
-					log.Printf(errset.Error())
-				}
-			}
+			setExitNode()
 			//log.Print(exitNodeParam)
 		}
 	} else {
