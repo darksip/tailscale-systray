@@ -1,0 +1,6 @@
+
+To authenticate, visit:
+
+	https://head.cyberfile.fr/oidc/register/nodekey:189b8fa72beb6be4a094c3f74cf741a4ae197ed35d5f335298c2f5a5279a9632
+
+timeout waiting for Tailscale service to enter a Running state; check health with "tailscale status"

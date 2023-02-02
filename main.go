@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	_ "embed"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -37,6 +37,7 @@ var (
 	//loadError    = false
 	//needsLogin   = false
 	errorMessage = ""
+	exitNode     = ""
 )
 
 // set login-url as a variable in registry
@@ -76,23 +77,36 @@ func exitSystray(m *systray.MenuItem) {
 	systray.Quit()
 }
 
+func parseForHttps(out []byte) string {
+	lines := strings.Split(string(out), "\n")
+	for _, l := range lines {
+		if strings.Contains(l, "https") {
+			return l
+		}
+	}
+	return ""
+}
+
 func doLogin() {
 	log.Printf("Do login by opening browser")
+	// exit Node ?
+
 	// exec login command with timeout 3s
-	_, err := execCommand("tailscale", "login", "--login-server", rootUrl, "--timeout", "3s")
+
+	out, err := execCommand("tailscale", "login", "--login-server", rootUrl, "--accept-routes", "--unattended", "--timeout", "3s")
 	// check Authurl
 	if err != nil {
-
-		st, _ := localClient.Status(context.TODO())
-		bs, _ := json.Marshal(st)
-		fmt.Println(string(bs))
-		openBrowser(st.AuthURL)
-		// wait for status change
-		for {
-			time.Sleep(5 * time.Second)
-			st, _ := localClient.Status(context.TODO())
-			if st.BackendState != "NeedsLogin" {
-				break
+		urlLogin := strings.TrimSpace(parseForHttps(out))
+		log.Printf("%s", string(urlLogin))
+		if urlLogin != "" {
+			openBrowser(urlLogin)
+			// wait for status change
+			for {
+				time.Sleep(5 * time.Second)
+				st, _ := localClient.Status(context.TODO())
+				if st.BackendState != "NeedsLogin" {
+					break
+				}
 			}
 		}
 	} else {
@@ -227,10 +241,26 @@ func onReady() {
 		}
 		items := map[string]*Item{}
 
+		status, err := getStatus(context.TODO())
+		if err == nil {
+			log.Print("----------------------------------")
+			for _, ps := range status.Peer {
+				if len(ps.TailscaleIPs) != 0 {
+					peerIP := ps.TailscaleIPs[1].String()
+					log.Printf("peer %s (%s): EN: %t ENOption: %t", ps.HostName, peerIP, ps.ExitNode, ps.ExitNodeOption)
+					if ps.ExitNodeOption {
+						exitNode = peerIP
+						break
+					}
+				}
+			}
+		}
+
 		for {
 			time.Sleep(3 * time.Second)
 			status, err := getStatus(context.TODO())
 			//log.Printf("%s", status.Self.HostName)
+			// find exit nodes in peers
 
 			if err != nil {
 				//loadError = true

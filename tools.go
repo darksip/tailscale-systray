@@ -7,7 +7,7 @@ import (
 	"runtime"
 )
 
-var rootUrl = "https://head.cyberfile.fr"
+var rootUrl = "https://head.juvise.cyberfile.fr"
 var adminUrl = rootUrl + "/web"
 var appName = "CyberVpn"
 
