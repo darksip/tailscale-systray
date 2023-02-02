@@ -90,10 +90,16 @@ func parseForHttps(out []byte) string {
 func doLogin() {
 	log.Printf("Do login by opening browser")
 	// exit Node ?
+	exitNodeParam := ""
+
+	if len(exitNode) > 0 {
+		log.Printf("we have an exit node : %s", exitNode)
+		exitNodeParam = fmt.Sprintf("--exit-node=%s", exitNode)
+	}
 
 	// exec login command with timeout 3s
 
-	out, err := execCommand("tailscale", "login", "--login-server", rootUrl, "--accept-routes", "--unattended", "--timeout", "3s")
+	out, err := execCommand("tailscale", "login", "--login-server", rootUrl, "--accept-routes", "--unattended", "--timeout", "3s", exitNodeParam)
 	// check Authurl
 	if err != nil {
 		urlLogin := strings.TrimSpace(parseForHttps(out))
