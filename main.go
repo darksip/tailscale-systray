@@ -8,8 +8,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -54,24 +54,38 @@ var (
 
 func main() {
 
-	var filename = filepath.Join(os.TempDir(), "cybervpn_file.lock")
-	file, err := os.OpenFile(filename, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0666)
+	// var filename = filepath.Join(os.TempDir(), "cybervpn_file.lock")
+	// file, err := os.OpenFile(filename, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0666)
+	// if err != nil {
+	// 	if os.IsExist(err) {
+	// 		log.Print("Program is already running.")
+	// 		os.Exit(1)
+	// 	}
+	// 	log.Printf("Unable to create lock file: %s", err)
+	// 	os.Exit(1)
+	// }
+	// file.Close()
+	// defer os.Remove(filename)
+	addr := "localhost:25169"
+	l, err := net.Listen("tcp", addr)
 	if err != nil {
-		if os.IsExist(err) {
-			log.Print("Program is already running.")
-			os.Exit(1)
-		}
-		log.Printf("Unable to create lock file: %s", err)
+		log.Print("Program is already running.")
 		os.Exit(1)
 	}
-	file.Close()
-	defer os.Remove(filename)
-
+	defer l.Close()
 	// your program logic here
 
 	iconOn = iconOnIco
 	iconOff = iconOffIco
 	systray.Run(onReady, nil)
+}
+
+func Notify(message string) {
+	beeep.Notify(
+		"Cyber Vpn",
+		string(message),
+		"icon/on.png",
+	)
 }
 
 // change the function to pass mandatory parameters with login-url
@@ -85,17 +99,20 @@ func doConnectionControl(m *systray.MenuItem, verb string) {
 		//log.Printf("launch command: tailscale %s", verb)
 		_, err := execCommand(cliExecutable, verb)
 		if err != nil {
-			beeep.Notify(
-				"Cyber Vpn",
-				string(err.Error()),
-				"",
-			)
+			Notify(err.Error())
 		}
 		bsAfter := getBackenState()
 		log.Printf("state after : %s", bsAfter)
-		if (bsBefore != bsAfter) && (bsAfter == "Running") {
-			setExitNode()
+		if bsBefore != bsAfter {
+			if bsAfter == "Running" {
+				setExitNode()
+				Notify("Cyber Vpn is active with exit node")
+			} else {
+				Notify(fmt.Sprintf("enter in state %s ", bsAfter))
+			}
+
 		}
+		// TODO: loop with timeout for changing state
 	}
 }
 
