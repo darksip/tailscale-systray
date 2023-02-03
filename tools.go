@@ -5,11 +5,19 @@ import (
 	"log"
 	"os/exec"
 	"runtime"
+	"strings"
 )
 
 var rootUrl = "https://head.juvise.cyberfile.fr"
 var adminUrl = rootUrl + "/web"
 var appName = "CyberVpn"
+
+// TODO: Attention il faut tenir compte de l'OS pour le chemin de l'executable
+// on doit le mettre sous cette forme pour l'execution sous windows sinon il refuse
+// l'execution
+//
+//	https://github.com/golang/go/issues/43724
+var cliExecutable = ".\\cybervpn-cli.exe"
 
 func openBrowser(url string) {
 	log.Printf("open url : %s", url)
@@ -26,11 +34,15 @@ func openBrowser(url string) {
 		err = fmt.Errorf("unsupported platform")
 	}
 	if err != nil {
-		log.Printf("could not open link: %v", err)
+		log.Printf("could not open link: %v", err.Error())
 	}
 }
 
 func execCommand(command string, verb ...string) ([]byte, error) {
+	log.Printf("exec command for %s : %s", runtime.GOOS, command)
+	log.Printf("args : %s", strings.Join(verb, " "))
+	//path, err := exec.LookPath(command)
+
 	switch runtime.GOOS {
 	case "darwin":
 		return exec.Command(command, verb...).CombinedOutput()

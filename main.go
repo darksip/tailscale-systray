@@ -49,6 +49,21 @@ var (
 // tailscale local client to use for IPN
 
 func main() {
+
+	// file, err := os.OpenFile("cybervpn_file.lock", os.O_CREATE|os.O_EXCL|os.O_RDWR, 0666)
+	// if err != nil {
+	// 	if os.IsExist(err) {
+	// 		log.Print("Program is already running.")
+	// 		os.Exit(1)
+	// 	}
+	// 	log.Printf("Unable to create lock file: %s", err)
+	// 	os.Exit(1)
+	// }
+	// file.Close()
+	// defer os.Remove("cybervpn_file.lock")
+
+	// your program logic here
+
 	iconOn = iconOnIco
 	iconOff = iconOffIco
 	systray.Run(onReady, nil)
@@ -63,11 +78,11 @@ func doConnectionControl(m *systray.MenuItem, verb string) {
 		bsBefore := getBackenState()
 		log.Printf("state before : %s", bsBefore)
 		//log.Printf("launch command: tailscale %s", verb)
-		b, err := execCommand("cybervpn-cli", verb)
+		_, err := execCommand(cliExecutable, verb)
 		if err != nil {
 			beeep.Notify(
 				"Cyber Vpn",
-				string(b),
+				string(err.Error()),
 				"",
 			)
 		}
@@ -104,7 +119,7 @@ func setExitNode() {
 	if len(exitNode) > 0 {
 		log.Printf("we have an exit node : %s", exitNode)
 		exitNodeParam := fmt.Sprintf("--exit-node=%s", exitNode)
-		_, errset := execCommand("cybervpn-cli", "set", exitNodeParam)
+		_, errset := execCommand(cliExecutable, "set", exitNodeParam)
 		if errset != nil {
 			log.Printf(errset.Error())
 		}
@@ -118,7 +133,7 @@ func doLogin() {
 
 	// exec login command with timeout 3s
 
-	out, err := execCommand("cybervpn-cli", "login", "--login-server", rootUrl, "--accept-routes", "--unattended", "--timeout", "3s")
+	out, err := execCommand(cliExecutable, "login", "--login-server", rootUrl, "--accept-routes", "--unattended", "--timeout", "3s")
 	// check Authurl
 	if err != nil {
 		urlLogin := strings.TrimSpace(parseForHttps(out))
