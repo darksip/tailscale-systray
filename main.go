@@ -1,11 +1,15 @@
 package main
 
+//go:generate goversioninfo
+
 import (
 	"context"
 	_ "embed"
 	"flag"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -50,17 +54,18 @@ var (
 
 func main() {
 
-	// file, err := os.OpenFile("cybervpn_file.lock", os.O_CREATE|os.O_EXCL|os.O_RDWR, 0666)
-	// if err != nil {
-	// 	if os.IsExist(err) {
-	// 		log.Print("Program is already running.")
-	// 		os.Exit(1)
-	// 	}
-	// 	log.Printf("Unable to create lock file: %s", err)
-	// 	os.Exit(1)
-	// }
-	// file.Close()
-	// defer os.Remove("cybervpn_file.lock")
+	var filename = filepath.Join(os.TempDir(), "cybervpn_file.lock")
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0666)
+	if err != nil {
+		if os.IsExist(err) {
+			log.Print("Program is already running.")
+			os.Exit(1)
+		}
+		log.Printf("Unable to create lock file: %s", err)
+		os.Exit(1)
+	}
+	file.Close()
+	defer os.Remove(filename)
 
 	// your program logic here
 
