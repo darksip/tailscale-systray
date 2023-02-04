@@ -54,18 +54,6 @@ var (
 
 func main() {
 
-	// var filename = filepath.Join(os.TempDir(), "cybervpn_file.lock")
-	// file, err := os.OpenFile(filename, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0666)
-	// if err != nil {
-	// 	if os.IsExist(err) {
-	// 		log.Print("Program is already running.")
-	// 		os.Exit(1)
-	// 	}
-	// 	log.Printf("Unable to create lock file: %s", err)
-	// 	os.Exit(1)
-	// }
-	// file.Close()
-	// defer os.Remove(filename)
 	addr := "localhost:25169"
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -81,10 +69,13 @@ func main() {
 }
 
 func Notify(message string) {
+	if strings.Contains(strings.ToLower(message), "tailscale") {
+		message = strings.ReplaceAll(strings.ToLower(message), "tailscale", "cybervpn")
+	}
 	beeep.Notify(
 		"Cyber Vpn",
 		string(message),
-		"icon/on.png",
+		"./icon/on.png",
 	)
 }
 
@@ -151,9 +142,6 @@ func setExitNode() {
 func doLogin() {
 
 	log.Printf("Do login by opening browser")
-	// exit Node ?
-
-	// exec login command with timeout 3s
 
 	out, err := execCommand(cliExecutable, "login", "--login-server", rootUrl, "--accept-routes", "--unattended", "--timeout", "3s")
 	// check Authurl
@@ -162,11 +150,13 @@ func doLogin() {
 		log.Printf("%s", string(urlLogin))
 		if urlLogin != "" {
 			openBrowser(urlLogin)
+			Notify("I'm opening your browser for identification\nYour authentification may be automatic\n or you may be asked for credentials")
 			// wait for status change
 			for {
-				time.Sleep(5 * time.Second)
+				time.Sleep(2 * time.Second)
 				//st, _ := localClient.Status(context.TODO())
 				if getBackenState() != "NeedsLogin" {
+					Notify("Authentification completed")
 					break
 				}
 			}
@@ -175,7 +165,7 @@ func doLogin() {
 			//log.Print(exitNodeParam)
 		}
 	} else {
-		log.Printf(err.Error())
+		Notify(err.Error())
 	}
 }
 
@@ -313,7 +303,8 @@ func onReady() {
 
 	systray.AddSeparator()
 
-	if *autologin && (st.BackendState == "NeedsLogin") {
+	if st.BackendState == "NeedsLogin" {
+		Notify("Cyber Vpn needs you to login...")
 		doLogin()
 	}
 

@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"syscall"
 )
 
 var rootUrl = "https://head.juvise.cyberfile.fr"
@@ -27,7 +28,9 @@ func openBrowser(url string) {
 		err = exec.Command("xdg-open", url).Start()
 	case "windows":
 		//err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
-		err = exec.Command("cmd", "/c", "start", url).Start()
+		cmd := exec.Command("cmd", "/c", "start", url)
+		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		cmd.Start()
 	case "darwin":
 		err = exec.Command("open", url).Start()
 	default:
@@ -38,6 +41,7 @@ func openBrowser(url string) {
 	}
 }
 
+// dont forget : go build -ldflags="-H windowsgui"
 func execCommand(command string, verb ...string) ([]byte, error) {
 	log.Printf("exec command for %s : %s", runtime.GOOS, command)
 	log.Printf("args : %s", strings.Join(verb, " "))
@@ -47,7 +51,9 @@ func execCommand(command string, verb ...string) ([]byte, error) {
 	case "darwin":
 		return exec.Command(command, verb...).CombinedOutput()
 	case "windows":
-		return exec.Command(command, verb...).CombinedOutput()
+		cmd := exec.Command(command, verb...)
+		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		return cmd.CombinedOutput()
 	case "linux":
 		allverbs := append([]string{command}, verb...)
 		return exec.Command("pkexec", allverbs...).CombinedOutput()
