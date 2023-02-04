@@ -7,8 +7,8 @@ import (
 
 type Status struct {
 	TailscaleUp bool
-	Self  Machine
-	Peers map[string]Machine
+	Self        Machine
+	Peers       map[string]Machine
 }
 
 type Machine struct {
@@ -35,8 +35,8 @@ func (s *Status) UnmarshalJSON(data []byte) error {
 
 	*s = Status{
 		TailscaleUp: isRunning,
-		Self:  self,
-		Peers: peers,
+		Self:        self,
+		Peers:       peers,
 	}
 
 	return nil

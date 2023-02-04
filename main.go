@@ -17,6 +17,7 @@ import (
 	"github.com/atotto/clipboard"
 	"github.com/gen2brain/beeep"
 	"github.com/getlantern/systray"
+	"github.com/joho/godotenv"
 
 	"tailscale.com/client/tailscale"
 )
@@ -65,6 +66,27 @@ func main() {
 
 	iconOn = iconOnIco
 	iconOff = iconOffIco
+	errenv := godotenv.Load(".env")
+	if errenv != nil {
+		log.Printf(".env file not found - create default values")
+		f, ferr := os.Create(".env")
+		if ferr == nil {
+			f.WriteString("URL=http://head.juvise.cyberfile.fr\n")
+			f.WriteString("BROWSER_METHOD=RUNDLL\n")
+			f.Close()
+		} else {
+			log.Print(ferr.Error())
+		}
+	} else {
+		val := os.Getenv("URL")
+		if val != "" {
+			rootUrl = val
+		}
+		val = os.Getenv("BROWSER_METHOD")
+		if val != "" {
+			browserMethod = val
+		}
+	}
 	systray.Run(onReady, nil)
 }
 
@@ -99,7 +121,16 @@ func doConnectionControl(m *systray.MenuItem, verb string) {
 				setExitNode()
 				Notify("Cyber Vpn is active with exit node")
 			} else {
-				Notify(fmt.Sprintf("enter in state %s ", bsAfter))
+				// TODO: faire plutot un switch avec default
+				if strings.ToLower(bsAfter) == "needslogin" {
+					Notify(fmt.Sprintf("Cyber Vpn needs login ,\n click on systray icon to log"))
+				}
+				if strings.ToLower(bsAfter) == "stopped" {
+					Notify(fmt.Sprintf("Cyber Vpn is disconnected"))
+				}
+				if strings.ToLower(bsAfter) == "logedout" {
+					Notify(fmt.Sprintf("Cyber Vpn is loged out \nClick on Login when you want to activate"))
+				}
 			}
 
 		}
@@ -142,21 +173,25 @@ func setExitNode() {
 func doLogin() {
 
 	log.Printf("Do login by opening browser")
-
+	Notify("Login process, \na browser window should open...")
 	out, err := execCommand(cliExecutable, "login", "--login-server", rootUrl, "--accept-routes", "--unattended", "--timeout", "3s")
 	// check Authurl
 	if err != nil {
 		urlLogin := strings.TrimSpace(parseForHttps(out))
 		log.Printf("%s", string(urlLogin))
 		if urlLogin != "" {
-			openBrowser(urlLogin)
-			Notify("I'm opening your browser for identification\nYour authentification may be automatic\n or you may be asked for credentials")
+			errb := openBrowser(urlLogin)
+			if errb != nil {
+				Notify(errb.Error())
+			} else {
+				Notify("I'm opening your browser for identification\nYour authentication may be automatic\n or you may be asked for credentials")
+			}
 			// wait for status change
 			for {
 				time.Sleep(2 * time.Second)
 				//st, _ := localClient.Status(context.TODO())
 				if getBackenState() != "NeedsLogin" {
-					Notify("Authentification completed")
+					Notify("Authentication complete")
 					break
 				}
 			}
@@ -165,6 +200,7 @@ func doLogin() {
 			//log.Print(exitNodeParam)
 		}
 	} else {
+		// ouvrir un dialog avec un lien cliquable
 		Notify(err.Error())
 	}
 }
@@ -196,7 +232,10 @@ func waitForClickAndOpenBrowser(m *systray.MenuItem, url string) {
 		if !ok {
 			break
 		}
-		openBrowser(url)
+		err := openBrowser(url)
+		if err != nil {
+			Notify(err.Error())
+		}
 	}
 }
 
@@ -245,9 +284,9 @@ func refreshExitNode() {
 func onReady() {
 
 	log.Printf("parsing args")
-	var autologin = flag.Bool("autologin", false, "")
+
 	flag.Parse()
-	log.Printf("autologin= %t", *autologin)
+
 	log.Printf("getting localClient...")
 	getStatus := localClient.Status
 

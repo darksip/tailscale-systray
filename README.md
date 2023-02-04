@@ -1,4 +1,4 @@
-# tailscale-systray
+# CyerVpn-systray
 
 Linux port of tailscale system tray menu.
 

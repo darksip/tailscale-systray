@@ -9,7 +9,10 @@ import (
 	"syscall"
 )
 
+// mettre le root Url dans un .env
+
 var rootUrl = "https://head.juvise.cyberfile.fr"
+var browserMethod = "RUNDLL"
 var adminUrl = rootUrl + "/web"
 var appName = "CyberVpn"
 
@@ -20,25 +23,32 @@ var appName = "CyberVpn"
 //	https://github.com/golang/go/issues/43724
 var cliExecutable = ".\\cybervpn-cli.exe"
 
-func openBrowser(url string) {
+func openBrowser(url string) error {
 	log.Printf("open url : %s", url)
 	var err error
 	switch runtime.GOOS {
 	case "linux":
 		err = exec.Command("xdg-open", url).Start()
 	case "windows":
-		//err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
-		cmd := exec.Command("cmd", "/c", "start", url)
-		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		cmd.Start()
+		var cmd *exec.Cmd
+		if browserMethod != "CMD" {
+			cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+		} else {
+			cmd = exec.Command("cmd", "/c", "start", url)
+			cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		}
+		err = cmd.Start()
 	case "darwin":
 		err = exec.Command("open", url).Start()
 	default:
 		err = fmt.Errorf("unsupported platform")
 	}
+
 	if err != nil {
+
 		log.Printf("could not open link: %v", err.Error())
 	}
+	return err
 }
 
 // dont forget : go build -ldflags="-H windowsgui"

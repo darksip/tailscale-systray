@@ -6,6 +6,7 @@ require (
 	github.com/atotto/clipboard v0.1.4
 	github.com/gen2brain/beeep v0.0.0-20220909211152-5a9ec94374f6
 	github.com/getlantern/systray v1.2.1
+	github.com/joho/godotenv v1.5.0
 	tailscale.com v1.36.0
 )
 
