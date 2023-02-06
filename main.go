@@ -174,6 +174,7 @@ func setExitNode() {
 	refreshExitNode()
 	if len(exitNode) > 0 {
 		log.Printf("we have an exit node : %s", exitNode)
+		// set exit and allow lan access local
 		exitNodeParam := fmt.Sprintf("--exit-node=%s --exit-node-allow-lan-access", exitNode)
 		_, errset := execCommand(cliExecutable, "set", exitNodeParam)
 		if errset != nil {
