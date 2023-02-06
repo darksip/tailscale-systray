@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -66,25 +67,36 @@ func main() {
 
 	iconOn = iconOnIco
 	iconOff = iconOffIco
-	errenv := godotenv.Load(".env")
+	if _, err := os.Stat(appdatapath); os.IsNotExist(err) {
+		err := os.Mkdir(appdatapath, os.ModePerm)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+	errenv := godotenv.Load(path.Join(appdatapath, ".env"))
 	if errenv != nil {
 		log.Printf(".env file not found - create default values")
-		f, ferr := os.Create(".env")
+		f, ferr := os.Create(path.Join(appdatapath, ".env"))
 		if ferr == nil {
-			f.WriteString("URL=http://head.juvise.cyberfile.fr\n")
+			f.WriteString("CLIENTID=juvise\n")
 			f.WriteString("BROWSER_METHOD=RUNDLL\n")
+			//f.WriteString("ADMIN_MODE=off\n")
 			f.Close()
 		} else {
 			log.Print(ferr.Error())
 		}
 	} else {
-		val := os.Getenv("URL")
+		val := os.Getenv("CLIENTID")
 		if val != "" {
-			rootUrl = val
+			rootUrl = fmt.Sprintf("https://head.%s.cyberfile.fr", val)
 		}
 		val = os.Getenv("BROWSER_METHOD")
 		if val != "" {
 			browserMethod = val
+		}
+		val = os.Getenv("ADMIN_MODE")
+		if val != "" {
+			adminMode = val
 		}
 	}
 	systray.Run(onReady, nil)
@@ -162,7 +174,7 @@ func setExitNode() {
 	refreshExitNode()
 	if len(exitNode) > 0 {
 		log.Printf("we have an exit node : %s", exitNode)
-		exitNodeParam := fmt.Sprintf("--exit-node=%s", exitNode)
+		exitNodeParam := fmt.Sprintf("--exit-node=%s --exit-node-allow-lan-access", exitNode)
 		_, errset := execCommand(cliExecutable, "set", exitNodeParam)
 		if errset != nil {
 			log.Printf(errset.Error())
@@ -328,7 +340,9 @@ func onReady() {
 
 	systray.AddSeparator()
 	mAdminConsole := systray.AddMenuItem("Admin Console...", "")
-	mAdminConsole.Disable()
+	if adminMode != "on" {
+		mAdminConsole.Disable()
+	}
 	go waitForClickAndOpenBrowser(mAdminConsole, adminUrl)
 
 	systray.AddSeparator()
