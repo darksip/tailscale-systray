@@ -42,8 +42,10 @@ var (
 	localClient tailscale.LocalClient
 	//loadError    = false
 	//needsLogin   = false
-	errorMessage = ""
-	exitNode     = ""
+	errorMessage   = ""
+	exitNode       = ""
+	activeExitNode = ""
+	menuExitNode   *systray.MenuItem
 )
 
 // set login-url as a variable in registry
@@ -183,9 +185,31 @@ func setExitNode() {
 			log.Printf("%s", o)
 			log.Printf(errset.Error())
 		} else {
+			activeExitNode = exitNode
+			menuExitNode.SetTitle("Set Exit Node Off")
 			o, errset = execCommand(cliExecutable, "set", "--exit-node-allow-lan-access")
 		}
 	}
+}
+
+func setExitNodeOff() {
+	for {
+		if _, ok := <-menuExitNode.ClickedCh; !ok {
+			break
+		}
+		if len(activeExitNode) > 0 {
+			o, errset := execCommand(cliExecutable, "set", `--exit-node=`)
+			if errset != nil {
+				log.Printf("%s", o)
+				log.Printf(errset.Error())
+			}
+			activeExitNode = ""
+			menuExitNode.SetTitle("Set Exit Node On")
+		} else {
+			setExitNode()
+		}
+	}
+
 }
 
 func doLogin() {
@@ -333,6 +357,9 @@ func onReady() {
 	mDisconnect.Hide()
 	go doConnectionControl(mDisconnect, "down")
 
+	menuExitNode = systray.AddMenuItem("Exit Node Off", "")
+	go setExitNodeOff()
+
 	systray.AddSeparator()
 	mThisDevice := systray.AddMenuItem("This device:", "")
 	mThisDevice.Hide()
@@ -410,6 +437,7 @@ func onReady() {
 					mMyDevices.Hide()
 					systray.SetTooltip(appName + ": Needs Login")
 					systray.SetIcon(iconOff)
+					continue
 				case "Stopped":
 					mLogin.Hide()
 					mLogout.Show()
@@ -419,6 +447,7 @@ func onReady() {
 					mThisDevice.Hide()
 					systray.SetIcon(iconOff)
 					systray.SetTooltip(appName + ": Stopped")
+					continue
 				case "Running", "Starting":
 					mLogin.Hide()
 					mLogout.Show()
@@ -444,6 +473,13 @@ func onReady() {
 			}
 
 			mThisDevice.SetTitle(fmt.Sprintf("This device: %s (%s)", status.Self.HostName, myIP))
+
+			if status.ExitNodeStatus != nil {
+				activeExitNode = status.ExitNodeStatus.TailscaleIPs[1].Addr().String()
+				if exitNode == "" {
+					exitNode = activeExitNode
+				}
+			}
 
 			for _, ps := range status.Peer {
 				ip := ps.TailscaleIPs[1].String()
