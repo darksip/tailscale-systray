@@ -89,6 +89,8 @@ func main() {
 		val := os.Getenv("CLIENTID")
 		if val != "" {
 			rootUrl = fmt.Sprintf("https://head.%s.cyberfile.fr", val)
+		} else {
+			rootUrl = "https://head.cyberfile.fr"
 		}
 		val = os.Getenv("BROWSER_METHOD")
 		if val != "" {

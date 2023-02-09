@@ -3,13 +3,13 @@
         "FileVersion": {
             "Major": 0,
             "Minor": 20,
-            "Patch": 0,
+            "Patch": 1,
             "Build": 0
         },
         "ProductVersion": {
             "Major": 0,
             "Minor": 20,
-            "Patch": 0,
+            "Patch": 1,
             "Build": 0
         },
         "FileFlagsMask": "3f",
@@ -21,15 +21,15 @@
     "StringFileInfo": {
         "Comments": "",
         "CompanyName": "Cyberscaling",
-        "FileDescription": "",
+        "FileDescription": "Cyber Vpn Control Systray",
         "FileVersion": "",
         "InternalName": "",
-        "LegalCopyright": "",
+        "LegalCopyright": "Cyberscaling 2022",
         "LegalTrademarks": "",
         "OriginalFilename": "",
         "PrivateBuild": "",
         "ProductName": "CyberVpn",
-        "ProductVersion": "v1.0.0.0",
+        "ProductVersion": "v1.20.1.0",
         "SpecialBuild": ""
     },
     "VarFileInfo": {
