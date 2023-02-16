@@ -52,9 +52,19 @@ func refreshExitNodes() {
 
 func checkLatency() {
 	for i, _ := range exitNodes {
-		//ip, lat :=
-		pingExitNode(&exitNodes[i])
-
+		ip, lat := pingExitNode(&exitNodes[i])
+		if len(latencies[ip]) >= 20 {
+			latencies[ip] = append(latencies[ip][1:], lat)
+		} else {
+			latencies[ip] = append(latencies[ip], lat)
+		}
+		if len(latencies[ip]) > 0 {
+			movLatencies[ip] = 0
+			for _, l := range latencies[ip] {
+				movLatencies[ip] += (l / float64(len(latencies[ip])))
+			}
+			log.Printf("%s : %f   [%f]", exitNodes[i].Ip, exitNodes[i].Latency, movLatencies[ip])
+		}
 	}
 }
 

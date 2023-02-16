@@ -68,7 +68,7 @@ func main() {
 
 	latencies = make(map[string][]float64)
 	movLatencies = map[string]float64{}
-	nping = 0
+	// nping = 0
 
 	iconOn = iconOnIco
 	iconOff = iconOffIco
