@@ -53,6 +53,11 @@ func refreshExitNodes() {
 func checkLatency() {
 	for i, _ := range exitNodes {
 		ip, lat := pingExitNode(&exitNodes[i])
+		if lat == 0.0 {
+			log.Printf("%s : %f   [%f]", exitNodes[i].Ip, 0.0, movLatencies[ip])
+			// don't add a 0.0 to the avg , we would give a bonus to a disfunctional exitNode
+			continue
+		}
 		if len(latencies[ip]) >= 20 {
 			latencies[ip] = append(latencies[ip][1:], lat)
 		} else {
@@ -110,6 +115,8 @@ func setExitNode() {
 			activeExitNode = exitNode
 			menuExitNode.SetTitle("Set Exit Node Off")
 			o, errset = execCommand(cliExecutable, "set", "--exit-node-allow-lan-access")
+			// reset ping count
+			nping = 0
 		}
 	}
 }
