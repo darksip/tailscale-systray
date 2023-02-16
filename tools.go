@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -12,20 +11,12 @@ import (
 
 // mettre le root Url dans un .env
 
-var clientId = "juvise"
-var rootUrl = "https://head.juvise.cyberfile.fr"
-var browserMethod = "RUNDLL"
-var adminUrl = rootUrl + "/web"
-var appName = "CyberVpn"
-var adminMode = "off"
-var appdatapath = fmt.Sprintf("%s\\%s", os.Getenv("APPDATA"), appName)
-
 // TODO: Attention il faut tenir compte de l'OS pour le chemin de l'executable
 // on doit le mettre sous cette forme pour l'execution sous windows sinon il refuse
 // l'execution
 //
 //	https://github.com/golang/go/issues/43724
-var cliExecutable = ".\\cybervpn-cli.exe"
+var cliExecutable = ".\\cybcli.exe"
 
 func openBrowser(url string) error {
 	log.Printf("open url : %s", url)

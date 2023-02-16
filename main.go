@@ -5,12 +5,10 @@ package main
 import (
 	"context"
 	_ "embed"
-	"flag"
 	"fmt"
 	"log"
 	"net"
 	"os"
-	"path"
 	"strings"
 	"sync"
 	"time"
@@ -18,7 +16,6 @@ import (
 	"github.com/atotto/clipboard"
 	"github.com/gen2brain/beeep"
 	"github.com/getlantern/systray"
-	"github.com/joho/godotenv"
 
 	"tailscale.com/client/tailscale"
 )
@@ -36,16 +33,17 @@ var (
 	iconOff    []byte
 )
 
+// il faudrait faire une struct pour refleter l etat de la struct dans l interface
+
 var (
 	mu          sync.RWMutex
 	myIP        string
 	localClient tailscale.LocalClient
 	//loadError    = false
 	//needsLogin   = false
-	errorMessage   = ""
-	exitNode       = ""
-	activeExitNode = ""
-	menuExitNode   *systray.MenuItem
+	errorMessage = ""
+	menuExitNode *systray.MenuItem
+	//exitNodePing   = 0.0
 )
 
 // set login-url as a variable in registry
@@ -66,43 +64,15 @@ func main() {
 	}
 	defer l.Close()
 	// your program logic here
+	loadEnv()
+
+	latencies = make(map[string][]float64)
+	movLatencies = map[string]float64{}
+	nping = 0
 
 	iconOn = iconOnIco
 	iconOff = iconOffIco
-	if _, err := os.Stat(appdatapath); os.IsNotExist(err) {
-		err := os.Mkdir(appdatapath, os.ModePerm)
-		if err != nil {
-			log.Println(err)
-		}
-	}
-	errenv := godotenv.Load(path.Join(appdatapath, ".env"))
-	if errenv != nil {
-		log.Printf(".env file not found - create default values")
-		f, ferr := os.Create(path.Join(appdatapath, ".env"))
-		if ferr == nil {
-			f.WriteString("CLIENTID=juvise\n")
-			f.WriteString("BROWSER_METHOD=RUNDLL\n")
-			//f.WriteString("ADMIN_MODE=off\n")
-			f.Close()
-		} else {
-			log.Print(ferr.Error())
-		}
-	} else {
-		val := os.Getenv("CLIENTID")
-		if val != "" {
-			rootUrl = fmt.Sprintf("https://head.%s.cyberfile.fr", val)
-		} else {
-			rootUrl = "https://head.cyberfile.fr"
-		}
-		val = os.Getenv("BROWSER_METHOD")
-		if val != "" {
-			browserMethod = val
-		}
-		val = os.Getenv("ADMIN_MODE")
-		if val != "" {
-			adminMode = val
-		}
-	}
+
 	systray.Run(onReady, nil)
 }
 
@@ -174,21 +144,15 @@ func getBackenState() string {
 	return st.BackendState
 }
 
-func setExitNode() {
-	refreshExitNode()
-	if len(exitNode) > 0 {
-		log.Printf("we have an exit node : %s", exitNode)
-		// set exit and allow lan access local
-		exitNodeParam := fmt.Sprintf(`--exit-node=%s`, exitNode)
-		o, errset := execCommand(cliExecutable, "set", exitNodeParam)
-		if errset != nil {
-			log.Printf("%s", o)
-			log.Printf(errset.Error())
-		} else {
-			activeExitNode = exitNode
-			menuExitNode.SetTitle("Set Exit Node Off")
-			o, errset = execCommand(cliExecutable, "set", "--exit-node-allow-lan-access")
-		}
+func disconnectReconnect() {
+	_, err := execCommand(cliExecutable, "down")
+	if err != nil {
+		Notify(err.Error())
+	}
+	time.Sleep(5 * time.Second)
+	_, err = execCommand(cliExecutable, "up")
+	if err != nil {
+		Notify(err.Error())
 	}
 }
 
@@ -215,36 +179,54 @@ func setExitNodeOff() {
 func doLogin() {
 
 	log.Printf("Do login by opening browser")
-	Notify("Login process, \na browser window should open...")
-	out, err := execCommand(cliExecutable, "login", "--login-server", rootUrl, "--accept-routes", "--unattended", "--timeout", "3s")
+	//Notify("Login process, \na browser window should open...")
+	out, _ := execCommand(cliExecutable, "login", "--login-server", rootUrl, "--accept-routes", "--unattended", "--timeout", "3s")
 	// check Authurl
-	if err != nil {
-		urlLogin := strings.TrimSpace(parseForHttps(out))
-		log.Printf("%s", string(urlLogin))
-		if urlLogin != "" {
-			errb := openBrowser(urlLogin)
-			if errb != nil {
-				Notify(errb.Error())
-			} else {
-				Notify("I'm opening your browser for identification\nYour authentication may be automatic\n or you may be asked for credentials")
-			}
-			// wait for status change
-			for {
-				time.Sleep(2 * time.Second)
-				//st, _ := localClient.Status(context.TODO())
-				if getBackenState() != "NeedsLogin" {
-					Notify("Authentication complete")
-					break
-				}
-			}
-			// check for the needs of a needs of an exit node
-			setExitNode()
-			//log.Print(exitNodeParam)
+	log.Println(string(out))
+	var urlLogin = ""
+	// get func to query status
+	getStatus := localClient.Status
+	var ntry = 0
+	// wait for the link to be available or timeout
+	for {
+		status, errc := getStatus(context.TODO())
+		if errc != nil {
+			Notify(errc.Error())
+			return
 		}
-	} else {
-		// ouvrir un dialog avec un lien cliquable
-		Notify(err.Error())
+		log.Printf("status: %s", status.BackendState)
+		log.Printf("url: %s", status.AuthURL)
+		if len(status.AuthURL) > 0 {
+			urlLogin = status.AuthURL
+			break
+		}
+		time.Sleep(1 * time.Second)
+		ntry++
+		if ntry > 120 {
+			Notify("Login Timeout")
+			return
+		}
 	}
+	// open the browser
+	errb := openBrowser(urlLogin)
+	if errb != nil {
+		Notify(errb.Error())
+	} else {
+		Notify("I'm opening your browser for identification\nYour authentication may be automatic\n or you may be asked for credentials")
+	}
+	// wait for status change
+	for {
+		time.Sleep(2 * time.Second)
+		//st, _ := localClient.Status(context.TODO())
+		if getBackenState() == "Running" {
+			Notify("Authentication complete")
+			break
+		}
+	}
+
+	// check for the needs of a needs of an exit node
+	setExitNode()
+	//log.Print(exitNodeParam)
 }
 
 func waitForLogin(m *systray.MenuItem) {
@@ -304,30 +286,7 @@ func waitForClickAndCopyIpToClipboard(m *systray.MenuItem) {
 	}
 }
 
-func refreshExitNode() {
-
-	getStatus := localClient.Status
-	status, err := getStatus(context.TODO())
-	if err == nil {
-		//log.Print("----------------------------------")
-		for _, ps := range status.Peer {
-			if len(ps.TailscaleIPs) != 0 {
-				peerIP := ps.TailscaleIPs[1].String()
-				//log.Printf("peer %s (%s): EN: %t ENOption: %t", ps.HostName, peerIP, ps.ExitNode, ps.ExitNodeOption)
-				if ps.ExitNodeOption {
-					exitNode = peerIP
-					break
-				}
-			}
-		}
-	}
-}
-
 func onReady() {
-
-	log.Printf("parsing args")
-
-	flag.Parse()
 
 	log.Printf("getting localClient...")
 	getStatus := localClient.Status
@@ -389,9 +348,16 @@ func onReady() {
 
 	systray.AddSeparator()
 
-	if st.BackendState == "NeedsLogin" {
-		Notify("Cyber Vpn needs you to login...")
-		doLogin()
+	if st != nil {
+		if st.BackendState == "NeedsLogin" {
+			Notify("Cyber Vpn needs you to login...")
+			doLogin()
+		}
+	} else {
+		// the service should have started prior
+		// we need to wait and try periodically until the
+		// service is responding
+		log.Println("The service CyberVpn does not respond")
 	}
 
 	go func() {
@@ -474,12 +440,24 @@ func onReady() {
 
 			mThisDevice.SetTitle(fmt.Sprintf("This device: %s (%s)", status.Self.HostName, myIP))
 
+			mu.Lock()
+
+			refreshExitNodes()
+			checkLatency()
+			bestExitNode := getBestExitNodeIp()
+			log.Printf("best exit node : %s", bestExitNode)
 			if status.ExitNodeStatus != nil {
 				activeExitNode = status.ExitNodeStatus.TailscaleIPs[1].Addr().String()
-				if exitNode == "" {
-					exitNode = activeExitNode
+				log.Printf("active exit node : %s", activeExitNode)
+				if !isStillActive(activeExitNode) {
+					log.Printf("ouch! activeExitNode is unreachable ! let' choose another one")
+					//disconnectReconnect()
+					setExitNode()
 				}
+			} else {
+				setExitNode()
 			}
+			mu.Unlock()
 
 			for _, ps := range status.Peer {
 				ip := ps.TailscaleIPs[1].String()
