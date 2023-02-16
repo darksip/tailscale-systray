@@ -10,13 +10,14 @@ import (
 )
 
 var (
-	clientId      = "juvise"
-	rootUrl       = "https://head.juvise.cyberfile.fr"
+	clientId      = ""
+	rootUrl       = "https://head.cyberfile.fr"
 	browserMethod = "RUNDLL"
 	adminUrl      = rootUrl + "/web"
 	appName       = "CyberVpn"
 	adminMode     = "off"
 	appdatapath   = fmt.Sprintf("%s\\%s", os.Getenv("APPDATA"), appName)
+	excludeCirds  = ""
 )
 
 func loadEnv() {

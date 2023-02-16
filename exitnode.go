@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"net/netip"
 	"time"
 
@@ -51,6 +52,7 @@ func refreshExitNodes() {
 }
 
 func checkLatency() {
+	nping++ // nb of ping since laste exitNode change
 	for i, _ := range exitNodes {
 		ip, lat := pingExitNode(&exitNodes[i])
 		if lat == 0.0 {
@@ -68,14 +70,37 @@ func checkLatency() {
 			for _, l := range latencies[ip] {
 				movLatencies[ip] += (l / float64(len(latencies[ip])))
 			}
-			log.Printf("%s : %f   [%f]", exitNodes[i].Ip, exitNodes[i].Latency, movLatencies[ip])
+			log.Printf("%s : %f   [%f] ", exitNodes[i].Ip, exitNodes[i].Latency, movLatencies[ip])
 		}
 	}
+}
+
+func getBestExitNodeFromLatency() *ExitNode {
+	var bestNode *ExitNode = nil
+	var bestLatency float64 = math.MaxFloat64
+
+	for i := range exitNodes {
+		if latency, ok := movLatencies[exitNodes[i].Ip]; ok && latency < bestLatency {
+			bestNode = &exitNodes[i]
+			bestLatency = latency
+		}
+	}
+
+	return bestNode
 }
 
 func getBestExitNodeIp() string {
 	minLatency := 0.5
 	bestIp := ""
+	if nping > 100 {
+		bestExitNodePtr := getBestExitNodeFromLatency()
+		if bestExitNodePtr != nil {
+			bestExitNode := *bestExitNodePtr
+			if bestExitNode.Latency > 0 && bestExitNode.Latency < minLatency {
+				return bestExitNode.Ip
+			}
+		}
+	}
 	for _, en := range exitNodes {
 		if en.Latency > 0.0 && en.Latency < minLatency {
 			bestIp = en.Ip

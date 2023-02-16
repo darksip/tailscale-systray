@@ -68,7 +68,7 @@ func main() {
 
 	latencies = make(map[string][]float64)
 	movLatencies = map[string]float64{}
-	// nping = 0
+	nping = 0
 
 	iconOn = iconOnIco
 	iconOff = iconOffIco
@@ -453,6 +453,13 @@ func onReady() {
 					log.Printf("ouch! activeExitNode is unreachable ! let' choose another one")
 					//disconnectReconnect()
 					setExitNode()
+				} else {
+					if nping > 100 {
+						// TODO : demand at least 30% best in latency to change
+						if bestExitNode != activeExitNode {
+							setExitNode()
+						}
+					}
 				}
 			} else {
 				setExitNode()
