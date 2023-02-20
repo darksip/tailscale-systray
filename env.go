@@ -16,7 +16,7 @@ var (
 	adminUrl      = rootUrl + "/web"
 	appName       = "CyberVpn"
 	adminMode     = "off"
-	appdatapath   = fmt.Sprintf("%s\\%s", os.Getenv("APPDATA"), appName)
+	appdatapath   = fmt.Sprintf("%s\\%s", os.Getenv("LocalAppData"), appName)
 	excludeCirds  = ""
 )
 
@@ -32,7 +32,7 @@ func loadEnv() {
 		log.Printf(".env file not found - create default values")
 		f, ferr := os.Create(path.Join(appdatapath, ".env"))
 		if ferr == nil {
-			f.WriteString("CLIENTID=juvise\n")
+			f.WriteString("CLIENTID=\n")
 			f.WriteString("BROWSER_METHOD=RUNDLL\n")
 			//f.WriteString("ADMIN_MODE=off\n")
 			f.Close()

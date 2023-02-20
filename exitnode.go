@@ -31,7 +31,7 @@ func refreshExitNodes() {
 	status, err := getStatus(context.TODO())
 	if err == nil {
 		exitNodes = []ExitNode{}
-		log.Print("----------------------------------")
+		log.Printf("---------------------------------- nping: %d", nping)
 		for _, ps := range status.Peer {
 			if len(ps.TailscaleIPs) != 0 {
 				peerIP := ps.TailscaleIPs[1].String()
