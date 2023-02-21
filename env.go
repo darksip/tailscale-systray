@@ -16,7 +16,7 @@ var (
 	adminUrl      = rootUrl + "/web"
 	appName       = "CyberVpn"
 	adminMode     = "off"
-	appdatapath   = fmt.Sprintf("%s\\%s", os.Getenv("LocalAppData"), appName)
+	appdatapath   = fmt.Sprintf("%s\\%s", os.Getenv("ProgramData"), appName)
 	excludeCirds  = ""
 )
 

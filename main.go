@@ -21,13 +21,13 @@ import (
 )
 
 var (
-	//go:embed icon/on.png
+	//go:embed icon/on256.png
 	iconOnPng []byte
 	//go:embed icon/off.png
 	iconOffPng []byte
 	//go:embed icon/on.ico
 	iconOnIco []byte
-	//go:embed icon/off.ico
+	//go:embed icon/off256.ico
 	iconOffIco []byte
 	iconOn     []byte
 	iconOff    []byte
@@ -454,7 +454,7 @@ func onReady() {
 					//disconnectReconnect()
 					setExitNode()
 				} else {
-					if nping > 100 {
+					if nping > 10 {
 						// TODO : demand at least 30% best in latency to change
 						if bestExitNode != activeExitNode {
 							setExitNode()
@@ -467,6 +467,9 @@ func onReady() {
 			mu.Unlock()
 
 			for _, ps := range status.Peer {
+				if ips := ps.TailscaleIPs; ips == nil || len(ips) < 2 {
+					continue
+				}
 				ip := ps.TailscaleIPs[1].String()
 				peerName := ps.DNSName
 				title := peerName
