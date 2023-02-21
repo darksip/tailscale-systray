@@ -21,11 +21,11 @@ import (
 )
 
 var (
-	//go:embed icon/on256.png
+	//go:embed icon/on.png
 	iconOnPng []byte
 	//go:embed icon/off.png
 	iconOffPng []byte
-	//go:embed icon/on.ico
+	//go:embed icon/on256.ico
 	iconOnIco []byte
 	//go:embed icon/off256.ico
 	iconOffIco []byte
