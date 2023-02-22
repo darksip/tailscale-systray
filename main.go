@@ -42,7 +42,7 @@ var (
 	//loadError    = false
 	//needsLogin   = false
 	errorMessage = ""
-	menuExitNode *systray.MenuItem
+
 	//exitNodePing   = 0.0
 )
 
@@ -74,17 +74,6 @@ func main() {
 	iconOff = iconOffIco
 
 	systray.Run(onReady, nil)
-}
-
-func Notify(message string) {
-	if strings.Contains(strings.ToLower(message), "tailscale") {
-		message = strings.ReplaceAll(strings.ToLower(message), "tailscale", "cybervpn")
-	}
-	beeep.Notify(
-		"Cyber Vpn",
-		string(message),
-		"./icon/on.png",
-	)
 }
 
 // change the function to pass mandatory parameters with login-url
@@ -129,105 +118,15 @@ func exitSystray(m *systray.MenuItem) {
 	systray.Quit()
 }
 
-func parseForHttps(out []byte) string {
-	lines := strings.Split(string(out), "\n")
-	for _, l := range lines {
-		if strings.Contains(l, "https") {
-			return l
-		}
-	}
-	return ""
-}
-
-func getBackenState() string {
-	st, _ := localClient.Status(context.TODO())
-	return st.BackendState
-}
-
-func disconnectReconnect() {
-	_, err := execCommand(cliExecutable, "down")
-	if err != nil {
-		Notify(err.Error())
-	}
-	time.Sleep(5 * time.Second)
-	_, err = execCommand(cliExecutable, "up")
-	if err != nil {
-		Notify(err.Error())
-	}
-}
-
-func setExitNodeOff() {
-	for {
-		if _, ok := <-menuExitNode.ClickedCh; !ok {
-			break
-		}
-		if len(activeExitNode) > 0 {
-			o, errset := execCommand(cliExecutable, "set", `--exit-node=`)
-			if errset != nil {
-				log.Printf("%s", o)
-				log.Printf(errset.Error())
-			}
-			activeExitNode = ""
-			menuExitNode.SetTitle("Set Exit Node On")
-		} else {
-			setExitNode()
-		}
-	}
-
-}
-
-func doLogin() {
-
-	log.Printf("Do login by opening browser")
-	//Notify("Login process, \na browser window should open...")
-	out, _ := execCommand(cliExecutable, "login", "--login-server", rootUrl, "--accept-routes", "--unattended", "--timeout", "3s")
-	// check Authurl
-	log.Println(string(out))
-	var urlLogin = ""
-	// get func to query status
-	getStatus := localClient.Status
-	var ntry = 0
-	// wait for the link to be available or timeout
-	for {
-		status, errc := getStatus(context.TODO())
-		if errc != nil {
-			Notify(errc.Error())
-			return
-		}
-		log.Printf("status: %s", status.BackendState)
-		log.Printf("url: %s", status.AuthURL)
-		if len(status.AuthURL) > 0 {
-			urlLogin = status.AuthURL
-			break
-		}
-		time.Sleep(1 * time.Second)
-		ntry++
-		if ntry > 120 {
-			Notify("Login Timeout")
-			return
-		}
-	}
-	// open the browser
-	errb := openBrowser(urlLogin)
-	if errb != nil {
-		Notify(errb.Error())
-	} else {
-		Notify("I'm opening your browser for identification\nYour authentication may be automatic\n or you may be asked for credentials")
-	}
-	// wait for status change
-	for {
-		time.Sleep(2 * time.Second)
-		//st, _ := localClient.Status(context.TODO())
-		if getBackenState() == "Running" {
-			Notify("Authentication complete")
-			break
-		}
-	}
-
-	// check for the needs of a needs of an exit node
-	setExitNode()
-	//log.Print(exitNodeParam)
-}
+// func parseForHttps(out []byte) string {
+// 	lines := strings.Split(string(out), "\n")
+// 	for _, l := range lines {
+// 		if strings.Contains(l, "https") {
+// 			return l
+// 		}
+// 	}
+// 	return ""
+// }
 
 func waitForLogin(m *systray.MenuItem) {
 	for {
@@ -441,84 +340,21 @@ func onReady() {
 			mThisDevice.SetTitle(fmt.Sprintf("This device: %s (%s)", status.Self.HostName, myIP))
 
 			mu.Lock()
-
 			refreshExitNodes()
 			checkLatency()
-			bestExitNode := getBestExitNodeIp()
-			log.Printf("best exit node : %s", bestExitNode)
 			if status.ExitNodeStatus != nil {
-				activeExitNode = status.ExitNodeStatus.TailscaleIPs[1].Addr().String()
-				log.Printf("active exit node : %s", activeExitNode)
-				if !isStillActive(activeExitNode) {
-					log.Printf("ouch! activeExitNode is unreachable ! let' choose another one")
-					//disconnectReconnect()
-					setExitNode()
-				} else {
-					if nping > npingsCheck {
-						// TODO : demand at least 30% best in latency to change
-						if bestExitNode != activeExitNode {
-							setExitNode()
-						}
-					}
+				if len(status.ExitNodeStatus.TailscaleIPs) > 1 {
+					activeExitNode = status.ExitNodeStatus.TailscaleIPs[1].Addr().String()
+					checkActiveNodeAndSetExitNode()
 				}
 			} else {
 				setExitNode()
 			}
 			mu.Unlock()
 
-			for _, ps := range status.Peer {
-				if ips := ps.TailscaleIPs; ips == nil || len(ips) < 2 {
-					continue
-				}
-				ip := ps.TailscaleIPs[1].String()
-				peerName := ps.DNSName
-				title := peerName
-
-				sub := mMyDevices
-
-				if item, ok := items[title]; ok {
-					item.found = true
-				} else {
-					items[title] = &Item{
-						menu:  sub.AddSubMenuItem(title, title),
-						title: title,
-						ip:    ip,
-						found: true,
-					}
-					go func(item *Item) {
-						// TODO fix race condition
-						for {
-							_, ok := <-item.menu.ClickedCh
-							if !ok {
-								break
-							}
-							err := clipboard.WriteAll(item.ip)
-							if err != nil {
-								beeep.Notify(
-									appName,
-									err.Error(),
-									"",
-								)
-								return
-							}
-							beeep.Notify(
-								item.title,
-								fmt.Sprintf("Copy the IP address (%s) to the Clipboard", item.ip),
-								"",
-							)
-						}
-					}(items[title])
-				}
-			}
-
-			for k, v := range items {
-				if !v.found {
-					// TODO fix race condition
-					v.menu.Hide()
-					delete(items, k)
-				}
-			}
-
+			// cette section sera transfer dans la gestion d unr
+			// liste dans une fenetre a part
+			// -> contenu dans loopInNodes.txt
 		}
 	}()
 }

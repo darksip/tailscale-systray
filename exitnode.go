@@ -51,9 +51,35 @@ func refreshExitNodes() {
 	}
 }
 
+func checkActiveNodeAndSetExitNode() {
+	bestExitNode := getBestExitNodeIp()
+	log.Printf("best exit node : %s", bestExitNode)
+	log.Printf("active exit node : %s", activeExitNode)
+	if !isStillActive(activeExitNode) {
+		log.Printf("ouch! activeExitNode is unreachable ! let' choose another one")
+		setExitNode()
+	} else {
+		if nping > npingsCheck {
+			// TODO : demand at least 30% best in latency to change
+			if bestExitNode != activeExitNode {
+				setExitNode()
+			}
+		}
+	}
+}
+
+func removeExitNode() {
+	o, errset := execCommand(cliExecutable, "set", `--exit-node=`)
+	if errset != nil {
+		log.Printf("%s", o)
+		log.Printf(errset.Error())
+	}
+	activeExitNode = ""
+}
+
 func checkLatency() {
 	nping++ // nb of ping since laste exitNode change
-	for i, _ := range exitNodes {
+	for i := range exitNodes {
 		ip, lat := pingExitNode(&exitNodes[i])
 		if lat == 0.0 {
 			log.Printf("%s : %f   [%f]", exitNodes[i].Ip, 0.0, movLatencies[ip])
