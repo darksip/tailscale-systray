@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -18,6 +19,7 @@ var (
 	adminMode     = "off"
 	appdatapath   = fmt.Sprintf("%s\\%s", os.Getenv("ProgramData"), appName)
 	excludeCirds  = ""
+	npingsCheck   = 100
 )
 
 func loadEnv() {
@@ -40,19 +42,15 @@ func loadEnv() {
 			log.Print(ferr.Error())
 		}
 	} else {
-		val := os.Getenv("CLIENTID")
-		if val != "" {
+		if val := os.Getenv("CLIENTID"); val != "" {
 			rootUrl = fmt.Sprintf("https://head.%s.cyberfile.fr", val)
-		} else {
-			rootUrl = "https://head.cyberfile.fr"
 		}
-		val = os.Getenv("BROWSER_METHOD")
-		if val != "" {
-			browserMethod = val
-		}
-		val = os.Getenv("ADMIN_MODE")
-		if val != "" {
-			adminMode = val
+		browserMethod = os.Getenv("BROWSER_METHOD")
+		adminMode = os.Getenv("ADMIN_MODE")
+		if val := os.Getenv("NPINGS"); val != "" {
+			if i, err := strconv.Atoi(val); err == nil {
+				npingsCheck = i
+			}
 		}
 	}
 }

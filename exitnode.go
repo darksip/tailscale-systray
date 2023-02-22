@@ -92,7 +92,7 @@ func getBestExitNodeFromLatency() *ExitNode {
 func getBestExitNodeIp() string {
 	minLatency := 0.5
 	bestIp := ""
-	if nping > 10 {
+	if nping > npingsCheck {
 		bestExitNodePtr := getBestExitNodeFromLatency()
 		if bestExitNodePtr != nil {
 			bestExitNode := *bestExitNodePtr

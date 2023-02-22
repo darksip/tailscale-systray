@@ -25,9 +25,9 @@ var (
 	iconOnPng []byte
 	//go:embed icon/off.png
 	iconOffPng []byte
-	//go:embed icon/on256.ico
+	//go:embed icon/on64.ico
 	iconOnIco []byte
-	//go:embed icon/off256.ico
+	//go:embed icon/off64.ico
 	iconOffIco []byte
 	iconOn     []byte
 	iconOff    []byte
@@ -454,7 +454,7 @@ func onReady() {
 					//disconnectReconnect()
 					setExitNode()
 				} else {
-					if nping > 10 {
+					if nping > npingsCheck {
 						// TODO : demand at least 30% best in latency to change
 						if bestExitNode != activeExitNode {
 							setExitNode()
