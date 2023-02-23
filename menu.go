@@ -20,6 +20,7 @@ func buildMenu() {
 
 	sm = sysmenu.NewSysMenu(hide, enable, add, sethnd, setlbl, setico)
 
+	(*sm).Add(sysmenu.Melt{Id: "CYBERVPN", Label: "Cyber Vpn", Disabled: false})
 	(*sm).Add(sysmenu.Melt{Id: "STATUS", Label: "unknown status", Disabled: true})
 	(*sm).Add(sysmenu.Melt{Id: "MYIP", Label: "0.0.0.0/32", Disabled: false})
 	(*sm).Add(sysmenu.Melt{Separator: true})

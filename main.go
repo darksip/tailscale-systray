@@ -28,8 +28,18 @@ var (
 	iconOnIco []byte
 	//go:embed icon/off64.ico
 	iconOffIco []byte
-	iconOn     []byte
-	iconOff    []byte
+	//go:embed icon/empty16.ico
+	iconEmpty []byte
+	//go:embed icon/icoOn16.ico
+	iconOn16 []byte
+	//go:embed icon/bluebaloon.ico
+	iconBlueBaloon []byte
+	//go:embed icon/greybaloon.ico
+	iconGreyBaloon []byte
+	//go:embed icon/redbaloon.ico
+	iconRedBaloon []byte
+	iconOn        []byte
+	iconOff       []byte
 )
 
 // il faudrait faire une struct pour refleter l etat de la struct dans l interface
@@ -130,22 +140,25 @@ func onReady() {
 				errorMessage = ""
 				sm.SetHidden("SHOW_ERROR", true)
 				sm.SetLabel("STATUS", status.BackendState)
+				sm.SetIcon("CYBERVPN", iconOn16)
 				switch status.BackendState {
 				case "NeedsLogin":
 					sm.SetHiddenAll([]string{"CONNECT", "DISCONNECT", "EXITNODE_ON", "EXINODE_OFF", "LOGOUT"}, true)
 					sm.SetHidden("LOGIN", false)
-					systray.SetIcon(iconOff)
+					sm.SetIcon("", iconOff)
+					sm.SetIcon("MYIP", iconRedBaloon)
 					continue
 				case "Stopped":
 					sm.SetHiddenAll([]string{"DISCONNECT", "EXITNODE_ON", "EXINODE_OFF", "LOGIN"}, true)
 					sm.SetHiddenAll([]string{"LOGOUT", "CONNECT"}, false)
 					sm.SetIcon("", iconOff)
-					systray.SetTooltip(appName + ": Stopped")
+					sm.SetIcon("MYIP", iconGreyBaloon)
 					continue
 				case "Running", "Starting":
 					sm.SetHiddenAll([]string{"CONNECT", "EXITNODE_ON", "EXINODE_OFF", "LOGIN"}, true)
 					sm.SetHiddenAll([]string{"LOGOUT", "DISCONNECT"}, false)
 					sm.SetIcon("", iconOn)
+					sm.SetIcon("MYIP", iconBlueBaloon)
 				}
 			}
 
