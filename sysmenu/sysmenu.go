@@ -2,46 +2,103 @@ package sysmenu
 
 import "fmt"
 
-type evtHnd func()
+type EvtHnd func()
 
-type mElt struct {
-	id        string
-	label     string
-	handler   evtHnd
-	enabled   bool
-	hidden    bool
-	separator bool
-	defawlt   bool
+type Melt struct {
+	Id        string
+	Label     string
+	Handler   EvtHnd
+	Disabled  bool
+	Hidden    bool
+	Separator bool
+	Defawlt   bool
 }
 
 type SysMenu struct {
-	items          []mElt
-	hideCallback   func(id string, value bool)
-	enableCallBack func(id string, value bool)
+	Items           []Melt
+	hideCallback    func(id string, value bool)
+	disableCallBack func(id string, value bool)
+	addCallback     func(e Melt)
+	setHndCallback  func(id string, e EvtHnd)
+	setLabel        func(id string, label string)
+	setIcon         func(id string, icon []byte)
 }
 
-func (sm *SysMenu) getById(id string) (*mElt, error) {
-	for i := range sm.items {
-		if sm.items[i].id == id {
-			return &sm.items[i], nil
+func (sm *SysMenu) GetById(id string) (*Melt, error) {
+	for i := range sm.Items {
+		if sm.Items[i].Id == id {
+			return &sm.Items[i], nil
 		}
 	}
 	return nil, fmt.Errorf("item with ID %q not found", id)
 }
 
-func NewSysMenu(hideCB func(id string, v bool), enableCB func(id string, v bool)) *SysMenu {
+func NewSysMenu(hideCB func(id string, v bool), disableCB func(id string, v bool),
+	add func(e Melt), hndCB func(id string, e EvtHnd),
+	lbl func(id string, l string), setico func(id string, ico []byte)) *SysMenu {
 	sm := &SysMenu{
-		items:          []mElt{},
-		hideCallback:   hideCB,
-		enableCallBack: enableCB,
+		Items:           []Melt{},
+		hideCallback:    hideCB,
+		disableCallBack: disableCB,
+		addCallback:     add,
+		setHndCallback:  hndCB,
+		setLabel:        lbl,
+		setIcon:         setico,
 	}
 	return sm
 }
 
-func (sm *SysMenu) Hide(id string) {
-	for i := range sm.items {
-		if sm.items[i].id == id {
+func (sm *SysMenu) SetHiddenAll(ids []string, v bool) {
+	for _, id := range ids {
+		sm.SetHidden(id, v)
+	}
+}
 
+func (sm *SysMenu) SetHidden(id string, v bool) {
+	for i := range sm.Items {
+		if sm.Items[i].Id == id {
+			if sm.Items[i].Hidden != v {
+				sm.Items[i].Hidden = v
+				sm.hideCallback(id, v)
+			}
 		}
 	}
+}
+
+func (sm *SysMenu) SetDisabled(id string, v bool) {
+	for i := range sm.Items {
+		if sm.Items[i].Id == id {
+			if sm.Items[i].Disabled != v {
+				sm.Items[i].Disabled = v
+				sm.disableCallBack(id, v)
+			}
+		}
+	}
+}
+
+func (sm *SysMenu) Add(e Melt) {
+	sm.Items = append(sm.Items, e)
+	sm.addCallback(e)
+}
+
+func (sm *SysMenu) SetHandler(id string, handler EvtHnd) {
+	for _, item := range sm.Items {
+		if item.Id == id {
+			item.Handler = handler
+			sm.setHndCallback(id, handler)
+		}
+	}
+}
+
+func (sm *SysMenu) SetLabel(id string, label string) {
+	for _, item := range sm.Items {
+		if item.Id == id {
+			item.Label = label
+			sm.setLabel(id, label)
+		}
+	}
+}
+
+func (sm *SysMenu) SetIcon(id string, ico []byte) {
+	sm.setIcon(id, ico)
 }

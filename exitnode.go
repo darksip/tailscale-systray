@@ -165,11 +165,21 @@ func setExitNode() {
 			log.Printf(errset.Error())
 		} else {
 			activeExitNode = exitNode
-			menuExitNode.SetTitle("Set Exit Node Off")
+			sm.SetHidden("EXITNODE_ON", true)
+			sm.SetHidden("EXITNODE_OFF", false)
+			//menuExitNode.SetTitle("Set Exit Node Off")
 			o, errset = execCommand(cliExecutable, "set", "--exit-node-allow-lan-access")
 			// reset ping count
 			nping = 0
 		}
+	}
+}
+
+func setExitNodeOff() {
+	if len(activeExitNode) > 0 {
+		removeExitNode()
+		sm.SetHidden("EXITNODE_ON", false)
+		sm.SetHidden("EXITNODE_OFF", true)
 	}
 }
 
@@ -221,4 +231,9 @@ func checkExitNodeConnection(en string) {
 		}
 	}
 
+}
+
+func AddExitNodeHandlersToMenu() {
+	sm.SetHandler("EXITNODE_ON", func() { setExitNode() })
+	sm.SetHandler("EXITNODE_OFF", func() { setExitNodeOff() })
 }

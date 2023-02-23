@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -74,4 +76,45 @@ func doLogin() {
 	// check for the needs of a needs of an exit node
 	setExitNode()
 	//log.Print(exitNodeParam)
+}
+
+func doConnection(verb string) {
+	bsBefore := getBackenState()
+	log.Printf("state before : %s", bsBefore)
+	//log.Printf("launch command: tailscale %s", verb)
+	_, err := execCommand(cliExecutable, verb)
+	if err != nil {
+		Notify(err.Error())
+	}
+	bsAfter := getBackenState()
+	log.Printf("state after : %s", bsAfter)
+	if bsBefore != bsAfter {
+		if bsAfter == "Running" {
+			setExitNode()
+			Notify("Cyber Vpn is active with exit node")
+		} else {
+			// TODO: faire plutot un switch avec default
+			if strings.ToLower(bsAfter) == "needslogin" {
+				Notify(fmt.Sprintf("Cyber Vpn needs login ,\n click on systray icon to log"))
+			}
+			if strings.ToLower(bsAfter) == "stopped" {
+				Notify(fmt.Sprintf("Cyber Vpn is disconnected"))
+			}
+			if strings.ToLower(bsAfter) == "logedout" {
+				Notify(fmt.Sprintf("Cyber Vpn is loged out \nClick on Login when you want to activate"))
+			}
+		}
+
+	}
+}
+
+func AddConnectionHandlersToMenu() {
+	sm.SetHandler("LOGIN", func() {
+		sm.SetDisabled("LOGIN", true)
+		doLogin()
+		sm.SetDisabled("LOGIN", false)
+	})
+	sm.SetHandler("LOGOUT", func() { doConnection("logout") })
+	sm.SetHandler("CONNECT", func() { doConnection("up") })
+	sm.SetHandler("DISCONNECT", func() { doConnection("down") })
 }
