@@ -22,7 +22,7 @@ func buildMenu() {
 
 	(*sm).Add(sysmenu.Melt{Id: "CYBERVPN", Label: "Cyber Vpn", Disabled: false})
 	(*sm).Add(sysmenu.Melt{Id: "STATUS", Label: "unknown status", Disabled: true})
-	(*sm).Add(sysmenu.Melt{Id: "MYIP", Label: "0.0.0.0/32", Disabled: false})
+	(*sm).Add(sysmenu.Melt{Id: "MYIP", Label: "0.0.0.0", Disabled: false})
 	(*sm).Add(sysmenu.Melt{Separator: true})
 	(*sm).Add(sysmenu.Melt{Id: "EXITNODES", Label: "-- Exit Nodes --", Disabled: true})
 	(*sm).Add(sysmenu.Melt{Id: "EN1", Label: "", Hidden: true})

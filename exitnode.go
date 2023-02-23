@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"net/netip"
+	"sort"
 	"time"
 
 	"tailscale.com/tailcfg"
@@ -15,6 +16,11 @@ type ExitNode struct {
 	Ip       string
 	IsActive bool
 	Latency  float64
+}
+
+type IpLat struct {
+	Ip      string
+	Latency float64
 }
 
 var (
@@ -99,6 +105,7 @@ func checkLatency() {
 			log.Printf("%s : %f   [%f] ", exitNodes[i].Ip, exitNodes[i].Latency, movLatencies[ip])
 		}
 	}
+
 }
 
 func getBestExitNodeFromLatency() *ExitNode {
@@ -231,6 +238,30 @@ func checkExitNodeConnection(en string) {
 		}
 	}
 
+}
+
+func showOrderedExitNode() {
+	// get five first
+	var ipsl []IpLat
+	for ip, lat := range movLatencies {
+		ipsl = append(ipsl, IpLat{ip, lat})
+	}
+	sort.Slice(ipsl, func(i, j int) bool {
+		return ipsl[i].Latency < ipsl[j].Latency
+	})
+
+	for i, ipl := range ipsl {
+		if i > 5 {
+			break
+		}
+		id := fmt.Sprintf("EN%d", i)
+		label := fmt.Sprintf("%16s  [%5f]", ipl.Ip, ipl.Latency)
+		sm.SetLabel(id, label)
+		sm.SetHidden(id, false)
+		if ipl.Ip == activeExitNode {
+			sm.SetIcon(id, iconBlueArrow)
+		}
+	}
 }
 
 func AddExitNodeHandlersToMenu() {

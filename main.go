@@ -38,8 +38,13 @@ var (
 	iconGreyBaloon []byte
 	//go:embed icon/redbaloon.ico
 	iconRedBaloon []byte
-	iconOn        []byte
-	iconOff       []byte
+	//go:embed icon/fleche16.ico
+	iconBlueArrow []byte
+	//go:embed icon/fleche16Off.ico
+	iconGreyArrow []byte
+
+	iconOn  []byte
+	iconOff []byte
 )
 
 // il faudrait faire une struct pour refleter l etat de la struct dans l interface
@@ -175,6 +180,7 @@ func onReady() {
 				if len(status.ExitNodeStatus.TailscaleIPs) > 1 {
 					activeExitNode = status.ExitNodeStatus.TailscaleIPs[1].Addr().String()
 					checkActiveNodeAndSetExitNode()
+
 				}
 			} else {
 				setExitNode()
