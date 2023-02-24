@@ -14,6 +14,15 @@ var (
 	itemsHandler map[string]*sysmenu.EvtHnd
 )
 
+func RunGl() {
+	systray.Run(onReady, nil)
+}
+
+func onReady() {
+	SetupMenuGL()
+	onMenuReady()
+}
+
 func SetupMenuGL() {
 
 	menuItems = map[string]*systray.MenuItem{}

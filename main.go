@@ -13,8 +13,6 @@ import (
 	"time"
 
 	"github.com/atotto/clipboard"
-	"github.com/gen2brain/beeep"
-	"github.com/getlantern/systray"
 
 	"tailscale.com/client/tailscale"
 )
@@ -80,21 +78,20 @@ func main() {
 
 	iconOn = iconOnIco
 	iconOff = iconOffIco
-
-	systray.Run(onReady, nil)
+	// rune getlantern systray
+	RunGl()
 }
 
-func onReady() {
+func onMenuReady() {
 
 	log.Printf("getting localClient...")
 	getStatus := localClient.Status
-
 	st, _ := getStatus(context.TODO())
 
-	SetupMenuGL()
 	// compose complete menu with hidden options
 	AddConnectionHandlersToMenu()
 	AddExitNodeHandlersToMenu()
+
 	sm.SetHandler("ADMIN", func() {
 		err := openBrowser(adminUrl)
 		if err != nil {
@@ -107,15 +104,12 @@ func onReady() {
 	sm.SetHandler("MYIP", func() {
 		err := clipboard.WriteAll(myIP)
 		if err == nil {
-			beeep.Notify(
-				"This device",
-				fmt.Sprintf("Copy the IP address (%s) to the Clipboard", myIP),
-				"",
-			)
+			Notify(fmt.Sprintf("Copy the IP address (%s) to the Clipboard", myIP))
 		}
 	})
 
 	sm.SetIcon("", iconOff)
+
 	if st != nil {
 		if st.BackendState == "NeedsLogin" {
 			Notify("Cyber Vpn needs you to login...")
