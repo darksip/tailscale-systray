@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/netip"
 	"sort"
+	"strings"
 	"time"
 
 	"tailscale.com/tailcfg"
@@ -24,11 +25,12 @@ type IpLat struct {
 }
 
 var (
-	activeExitNode = ""
-	exitNodes      []ExitNode
-	latencies      map[string][]float64
-	movLatencies   map[string]float64
-	nping          int
+	activeExitNode          = ""
+	exitNodes               []ExitNode
+	latencies               map[string][]float64
+	movLatencies            map[string]float64
+	nping                   int
+	wantsToDisableExitNodes = false
 )
 
 func refreshExitNodes() {
@@ -64,11 +66,13 @@ func checkActiveNodeAndSetExitNode() {
 	if !isStillActive(activeExitNode) {
 		log.Printf("ouch! activeExitNode is unreachable ! let' choose another one")
 		setExitNode()
+		showOrderedExitNode(bestExitNode)
 	} else {
 		if nping > npingsCheck {
 			// TODO : demand at least 30% best in latency to change
 			if bestExitNode != activeExitNode {
 				setExitNode()
+				showOrderedExitNode(bestExitNode)
 			}
 		}
 	}
@@ -83,7 +87,9 @@ func removeExitNode() {
 	activeExitNode = ""
 }
 
-func checkLatency() {
+func checkLatency() string {
+	var bestLatency float64 = math.MaxFloat64
+	var bestExitNodeIp string = ""
 	nping++ // nb of ping since laste exitNode change
 	for i := range exitNodes {
 		ip, lat := pingExitNode(&exitNodes[i])
@@ -103,9 +109,13 @@ func checkLatency() {
 				movLatencies[ip] += (l / float64(len(latencies[ip])))
 			}
 			log.Printf("%s : %f   [%f] ", exitNodes[i].Ip, exitNodes[i].Latency, movLatencies[ip])
+			if movLatencies[exitNodes[i].Ip] < bestLatency {
+				bestExitNodeIp = exitNodes[i].Ip
+				bestLatency = movLatencies[exitNodes[i].Ip]
+			}
 		}
 	}
-
+	return bestExitNodeIp
 }
 
 func getBestExitNodeFromLatency() *ExitNode {
@@ -157,10 +167,7 @@ func isStillActive(active string) bool {
 	return false
 }
 
-func setExitNode() {
-	refreshExitNodes()
-	checkLatency()
-	exitNode := getBestExitNodeIp()
+func forceExitNode(exitNode string) {
 	if len(exitNode) > 0 {
 		log.Printf("best exit node : %s", exitNode)
 		// set exit and allow lan access local
@@ -172,8 +179,6 @@ func setExitNode() {
 			log.Printf(errset.Error())
 		} else {
 			activeExitNode = exitNode
-			sm.SetHidden("EXITNODE_ON", true)
-			sm.SetHidden("EXITNODE_OFF", false)
 			//menuExitNode.SetTitle("Set Exit Node Off")
 			o, errset = execCommand(cliExecutable, "set", "--exit-node-allow-lan-access")
 			// reset ping count
@@ -182,11 +187,17 @@ func setExitNode() {
 	}
 }
 
+func setExitNode() {
+
+	refreshExitNodes()
+	exitNode := checkLatency()
+	//exitNode := getBestExitNodeIp()
+	forceExitNode(exitNode)
+}
+
 func setExitNodeOff() {
 	if len(activeExitNode) > 0 {
 		removeExitNode()
-		sm.SetHidden("EXITNODE_ON", false)
-		sm.SetHidden("EXITNODE_OFF", true)
 	}
 }
 
@@ -240,7 +251,7 @@ func checkExitNodeConnection(en string) {
 
 }
 
-func showOrderedExitNode() {
+func showOrderedExitNode(ben string) {
 	// get five first
 	var ipsl []IpLat
 	for ip, lat := range movLatencies {
@@ -254,17 +265,41 @@ func showOrderedExitNode() {
 		if i > 5 {
 			break
 		}
-		id := fmt.Sprintf("EN%d", i)
-		label := fmt.Sprintf("%16s  [%5f]", ipl.Ip, ipl.Latency)
+		id := fmt.Sprintf("EN%d", i+1)
+		label := fmt.Sprintf("%-16s[%8.2f ms]", ipl.Ip, ipl.Latency*1000)
 		sm.SetLabel(id, label)
 		sm.SetHidden(id, false)
 		if ipl.Ip == activeExitNode {
 			sm.SetIcon(id, iconBlueArrow)
+		} else {
+			if ipl.Ip == ben {
+				sm.SetIcon(id, iconGreyArrow)
+			} else {
+				sm.SetIcon(id, iconEmpty)
+			}
 		}
+
 	}
 }
 
+func getExitNodeIpForId(id string) string {
+	elt, _ := sm.GetById(id)
+	t := strings.Split(elt.Label, " ")
+	return t[0]
+}
+
 func AddExitNodeHandlersToMenu() {
-	sm.SetHandler("EXITNODE_ON", func() { setExitNode() })
-	sm.SetHandler("EXITNODE_OFF", func() { setExitNodeOff() })
+	sm.SetHandler("EXITNODE_ON", func() {
+		wantsToDisableExitNodes = false
+		setExitNode()
+	})
+	sm.SetHandler("EXITNODE_OFF", func() {
+		wantsToDisableExitNodes = true
+		sm.SetDisabled("EXITNODE_OFF", true)
+	})
+	sm.SetHandler("EN1", func() { forceExitNode(getExitNodeIpForId("EN1")) })
+	sm.SetHandler("EN2", func() { forceExitNode(getExitNodeIpForId("EN2")) })
+	sm.SetHandler("EN3", func() { forceExitNode(getExitNodeIpForId("EN3")) })
+	sm.SetHandler("EN4", func() { forceExitNode(getExitNodeIpForId("EN4")) })
+	sm.SetHandler("EN5", func() { forceExitNode(getExitNodeIpForId("EN5")) })
 }

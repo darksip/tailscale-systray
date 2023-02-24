@@ -138,6 +138,8 @@ func onReady() {
 				errorMessage = err.Error()
 				log.Printf("%s", errorMessage)
 				sm.SetHiddenAll([]string{"CONNECT", "LOGIN", "DISCONNECT", "EXITNODE_ON", "EXINODE_OFF", "LOGOUT"}, true)
+				sm.SetHiddenAll([]string{"EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
+
 				sm.SetHidden("SHOW_ERROR", false)
 				sm.SetIcon("", iconOff)
 				continue
@@ -149,18 +151,30 @@ func onReady() {
 				switch status.BackendState {
 				case "NeedsLogin":
 					sm.SetHiddenAll([]string{"CONNECT", "DISCONNECT", "EXITNODE_ON", "EXINODE_OFF", "LOGOUT"}, true)
+					sm.SetHiddenAll([]string{"EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
 					sm.SetHidden("LOGIN", false)
 					sm.SetIcon("", iconOff)
 					sm.SetIcon("MYIP", iconRedBaloon)
 					continue
 				case "Stopped":
 					sm.SetHiddenAll([]string{"DISCONNECT", "EXITNODE_ON", "EXINODE_OFF", "LOGIN"}, true)
+					sm.SetHiddenAll([]string{"EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
 					sm.SetHiddenAll([]string{"LOGOUT", "CONNECT"}, false)
 					sm.SetIcon("", iconOff)
 					sm.SetIcon("MYIP", iconGreyBaloon)
 					continue
 				case "Running", "Starting":
 					sm.SetHiddenAll([]string{"CONNECT", "EXITNODE_ON", "EXINODE_OFF", "LOGIN"}, true)
+					if status.ExitNodeStatus != nil {
+						sm.SetHidden("EXITNODES", false)
+						sm.SetHidden("EXITNODE_OFF", false)
+						sm.SetDisabled("EXITNODE_OFF", false)
+					} else {
+						sm.SetHiddenAll([]string{"EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
+						sm.SetHidden("EXITNODE_ON", false)
+						sm.SetHidden("EXITNODE_OFF", true)
+					}
+
 					sm.SetHiddenAll([]string{"LOGOUT", "DISCONNECT"}, false)
 					sm.SetIcon("", iconOn)
 					sm.SetIcon("MYIP", iconBlueBaloon)
@@ -174,13 +188,18 @@ func onReady() {
 				log.Printf("my ip: %s", myIP)
 				sm.SetLabel("MYIP", myIP)
 			}
+			if wantsToDisableExitNodes {
+				setExitNodeOff()
+				mu.Unlock()
+				continue
+			}
 			refreshExitNodes()
-			checkLatency()
+			bestIp := checkLatency()
+			showOrderedExitNode(bestIp)
 			if status.ExitNodeStatus != nil {
 				if len(status.ExitNodeStatus.TailscaleIPs) > 1 {
 					activeExitNode = status.ExitNodeStatus.TailscaleIPs[1].Addr().String()
 					checkActiveNodeAndSetExitNode()
-
 				}
 			} else {
 				setExitNode()

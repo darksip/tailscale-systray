@@ -82,18 +82,18 @@ func (sm *SysMenu) Add(e Melt) {
 }
 
 func (sm *SysMenu) SetHandler(id string, handler EvtHnd) {
-	for _, item := range sm.Items {
-		if item.Id == id {
-			item.Handler = handler
+	for i := range sm.Items {
+		if sm.Items[i].Id == id {
+			sm.Items[i].Handler = handler
 			sm.setHndCallback(id, handler)
 		}
 	}
 }
 
 func (sm *SysMenu) SetLabel(id string, label string) {
-	for _, item := range sm.Items {
-		if item.Id == id {
-			item.Label = label
+	for i := range sm.Items {
+		if sm.Items[i].Id == id {
+			sm.Items[i].Label = label
 			sm.setLabel(id, label)
 		}
 	}
