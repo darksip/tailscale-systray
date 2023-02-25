@@ -4,12 +4,12 @@ package main
 
 import (
 	"context"
+	"strings"
 
 	"fmt"
 	"log"
 	"net"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/atotto/clipboard"
@@ -20,7 +20,7 @@ import (
 // il faudrait faire une struct pour refleter l etat de la struct dans l interface
 
 var (
-	mu           sync.RWMutex
+	//mu           sync.RWMutex
 	myIP         string
 	localClient  tailscale.LocalClient
 	errorMessage = ""
@@ -55,8 +55,8 @@ func main() {
 	//RunGl()
 }
 
-func Notify(message string) {
-	NotifyWalk(message)
+func Notify(message string, iconame string) {
+	NotifyWalk(message, iconame)
 }
 
 func onMenuReady() {
@@ -72,16 +72,16 @@ func onMenuReady() {
 	sm.SetHandler("ADMIN", func() {
 		err := openBrowser(adminUrl)
 		if err != nil {
-			Notify(err.Error())
+			Notify(err.Error(), "error")
 		}
 	})
 	sm.SetHandler("SHOW_ERROR", func() {
-		Notify(errorMessage)
+		Notify(errorMessage, "error")
 	})
 	sm.SetHandler("MYIP", func() {
 		err := clipboard.WriteAll(myIP)
 		if err == nil {
-			Notify(fmt.Sprintf("Copy the IP address (%s) to the Clipboard", myIP))
+			Notify(fmt.Sprintf("Copy the IP address (%s) to the Clipboard", myIP), "info")
 		}
 	})
 
@@ -89,8 +89,11 @@ func onMenuReady() {
 
 	if st != nil {
 		if st.BackendState == "NeedsLogin" {
-			Notify("Cyber Vpn needs you to login...")
+			Notify("Cyber Vpn needs you to login...\nPlease wait while trying to reach the server...", "needslogin")
 			doLogin()
+		}
+		if strings.ToLower(st.BackendState) == "stopped" {
+			Notify(fmt.Sprintf("Cyber Vpn is disconnected\nRight Ckick on systray icon\n and choose Connect"), "disconnected")
 		}
 	} else {
 		// the service should have started prior
@@ -115,27 +118,28 @@ func onMenuReady() {
 				sm.SetIcon("", "off")
 				continue
 			} else {
+				log.Printf("State: %s", status.BackendState)
 				errorMessage = ""
 				sm.SetHidden("SHOW_ERROR", true)
 				sm.SetLabel("STATUS", status.BackendState)
 				sm.SetIcon("CYBERVPN", "off16")
 				switch status.BackendState {
 				case "NeedsLogin":
-					sm.SetHiddenAll([]string{"CONNECT", "DISCONNECT", "EXITNODE_ON", "EXINODE_OFF", "LOGOUT"}, true)
+					sm.SetHiddenAll([]string{"CONNECT", "DISCONNECT", "EXITNODE_ON", "EXITNODE_OFF", "LOGOUT"}, true)
 					sm.SetHiddenAll([]string{"EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
 					sm.SetHidden("LOGIN", false)
 					sm.SetIcon("", "off")
 					sm.SetIcon("MYIP", "redballoon")
 					continue
 				case "Stopped":
-					sm.SetHiddenAll([]string{"DISCONNECT", "EXITNODE_ON", "EXINODE_OFF", "LOGIN"}, true)
+					sm.SetHiddenAll([]string{"DISCONNECT", "EXITNODE_ON", "EXITNODE_OFF", "LOGIN"}, true)
 					sm.SetHiddenAll([]string{"EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
 					sm.SetHiddenAll([]string{"LOGOUT", "CONNECT"}, false)
 					sm.SetIcon("", "off")
 					sm.SetIcon("MYIP", "greyballoon")
 					continue
 				case "Running", "Starting":
-					sm.SetHiddenAll([]string{"CONNECT", "EXITNODE_ON", "EXINODE_OFF", "LOGIN"}, true)
+					sm.SetHiddenAll([]string{"CONNECT", "EXITNODE_ON", "EXITNODE_OFF", "LOGIN"}, true)
 					if status.ExitNodeStatus != nil {
 						sm.SetHidden("EXITNODES", false)
 						sm.SetHidden("EXITNODE_OFF", false)
@@ -152,7 +156,7 @@ func onMenuReady() {
 				}
 			}
 
-			mu.Lock()
+			//mu.Lock()
 
 			if len(status.TailscaleIPs) != 0 {
 				myIP = status.TailscaleIPs[1].String()
@@ -161,7 +165,7 @@ func onMenuReady() {
 			}
 			if wantsToDisableExitNodes {
 				setExitNodeOff()
-				mu.Unlock()
+				//mu.Unlock()
 				continue
 			}
 			refreshExitNodes()
@@ -175,7 +179,7 @@ func onMenuReady() {
 			} else {
 				setExitNode()
 			}
-			mu.Unlock()
+			//mu.Unlock()
 
 			// cette section sera transfer dans la gestion d unr
 			// liste dans une fenetre a part

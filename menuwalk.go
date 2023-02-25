@@ -72,6 +72,11 @@ func (tray *Tray) setup() error {
 		}
 	}
 	setico = func(id string, iconame string) {
+		if id == "" {
+			if icon, ok := iconsWalk[iconame]; ok {
+				tray.SetIcon(icon)
+			}
+		}
 		if ta, ok := tray.actions[id]; ok == true {
 			if icon, ok := iconsWalk[iconame]; ok {
 				ta.SetImage(icon)
@@ -94,18 +99,17 @@ func (tray *Tray) setup() error {
 	return nil
 }
 
-func NotifyWalk(message string) {
+func NotifyWalk(message string, iconame string) {
 	if strings.Contains(strings.ToLower(message), "tailscale") {
 		message = strings.ReplaceAll(strings.ToLower(message), "tailscale", "cybervpn")
 	}
-	icon, err := walk.Resources.Image("icon/on.png")
-	if err != nil {
-		log.Fatal(err)
+	if icon, ok := iconsWalk[iconame]; ok {
+		tray.ShowCustom(
+			"Cyber Vpn",
+			message,
+			icon)
 	}
-	tray.ShowCustom(
-		"Cyber Vpn",
-		message,
-		icon)
+
 }
 
 func RunWalk() {

@@ -39,8 +39,15 @@ func extractIcons(iconPath string) {
 	}
 }
 
-func addIcon(key string, name string) {
+func addIconFromFile(key string, name string) {
 	icon, err := walk.NewIconFromFile(fmt.Sprintf("%s\\%s.ico", iconPath, name))
+	if err == nil {
+		iconsWalk[key] = icon
+	}
+}
+
+func addIconFromDll(key string, index int) {
+	icon, err := walk.NewIconFromSysDLLWithSize("imageres", index, 256)
 	if err == nil {
 		iconsWalk[key] = icon
 	}
@@ -56,15 +63,23 @@ func initIconsWalk() {
 	}
 	// extract all icons
 	extractIcons(iconPath)
-	addIcon("empty", "empty16")
-	addIcon("on", "on")
-	addIcon("off", "off")
-	addIcon("off16", "off")
-	addIcon("blueballoon", "bluebaloon")
-	addIcon("greyballoon", "greybaloon")
-	addIcon("bluearrow", "fleche16")
-	addIcon("greyarrow", "fleche16Off")
-
+	addIconFromFile("empty", "empty16")
+	addIconFromFile("on", "on")
+	addIconFromFile("off", "off")
+	addIconFromFile("off16", "off")
+	addIconFromFile("blueballoon", "bluebaloon")
+	addIconFromFile("redballoon", "redbaloon")
+	addIconFromFile("greyballoon", "greybaloon")
+	addIconFromFile("bluearrow", "fleche16")
+	addIconFromFile("greyarrow", "fleche16Off")
+	addIconFromDll("connected", 28)
+	addIconFromDll("disconnected", 26)
+	addIconFromDll("error", 100)
+	addIconFromDll("attention", 102)
+	addIconFromDll("needslogin", 300)
+	addIconFromDll("browser", 170)
+	addIconFromDll("unknown", 99)
+	addIconFromDll("info", 99)
 }
 
 func loadSystemIcon(dll string, index int32, size int) (icon *walk.Icon, err error) {

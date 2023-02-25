@@ -16,12 +16,12 @@ func getBackenState() string {
 func disconnectReconnect() {
 	_, err := execCommand(cliExecutable, "down")
 	if err != nil {
-		Notify(err.Error())
+		Notify(err.Error(), "error")
 	}
 	time.Sleep(5 * time.Second)
 	_, err = execCommand(cliExecutable, "up")
 	if err != nil {
-		Notify(err.Error())
+		Notify(err.Error(), "error")
 	}
 }
 
@@ -40,7 +40,7 @@ func doLogin() {
 	for {
 		status, errc := getStatus(context.TODO())
 		if errc != nil {
-			Notify(errc.Error())
+			Notify(errc.Error(), "error")
 			return
 		}
 		log.Printf("status: %s", status.BackendState)
@@ -52,23 +52,24 @@ func doLogin() {
 		time.Sleep(1 * time.Second)
 		ntry++
 		if ntry > 120 {
-			Notify("Login Timeout")
+			Notify("Login Timeout", "error")
 			return
 		}
 	}
+
+	Notify("I'm opening your browser for identification\nYour authentication may be automatic\n or you may be asked for credentials", "browser")
+
 	// open the browser
 	errb := openBrowser(urlLogin)
 	if errb != nil {
-		Notify(errb.Error())
-	} else {
-		Notify("I'm opening your browser for identification\nYour authentication may be automatic\n or you may be asked for credentials")
+		Notify(errb.Error(), "error")
 	}
 	// wait for status change
 	for {
 		time.Sleep(2 * time.Second)
 		//st, _ := localClient.Status(context.TODO())
 		if getBackenState() == "Running" {
-			Notify("Authentication complete")
+			Notify("Authentication complete", "connected")
 			break
 		}
 	}
@@ -84,24 +85,24 @@ func doConnection(verb string) {
 	//log.Printf("launch command: tailscale %s", verb)
 	_, err := execCommand(cliExecutable, verb)
 	if err != nil {
-		Notify(err.Error())
+		Notify(err.Error(), "error")
 	}
 	bsAfter := getBackenState()
 	log.Printf("state after : %s", bsAfter)
 	if bsBefore != bsAfter {
 		if bsAfter == "Running" {
 			setExitNode()
-			Notify("Cyber Vpn is active with exit node")
+			Notify("You connection is active with exit node", "connected")
 		} else {
 			// TODO: faire plutot un switch avec default
 			if strings.ToLower(bsAfter) == "needslogin" {
-				Notify(fmt.Sprintf("Cyber Vpn needs login ,\n click on systray icon to log"))
+				Notify(fmt.Sprintf("Cyber Vpn needs you to authenticate ,\n click on systray icon to Log in"), "needslogin")
 			}
 			if strings.ToLower(bsAfter) == "stopped" {
-				Notify(fmt.Sprintf("Cyber Vpn is disconnected"))
+				Notify(fmt.Sprintf("Cyber Vpn is disconnected\nRight Ckick on systray icon\n and choose Connect"), "disconnected")
 			}
-			if strings.ToLower(bsAfter) == "logedout" {
-				Notify(fmt.Sprintf("Cyber Vpn is loged out \nClick on Login when you want to activate"))
+			if strings.ToLower(bsAfter) == "logged out" {
+				Notify(fmt.Sprintf("Cyber Vpn is logged out \nClick on Login when you want to activate"), "unknown")
 			}
 		}
 
