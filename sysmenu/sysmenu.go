@@ -1,5 +1,7 @@
 package sysmenu
 
+// base structure for menu abstraction
+
 import "fmt"
 
 type EvtHnd func()

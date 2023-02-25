@@ -108,6 +108,7 @@ func NotifyWalk(message string, iconame string) {
 			"Cyber Vpn",
 			message,
 			icon)
+
 	}
 
 }

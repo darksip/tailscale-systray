@@ -85,6 +85,7 @@ func removeExitNode() {
 		log.Printf(errset.Error())
 	}
 	activeExitNode = ""
+	log.Println("exit node disabled")
 }
 
 func checkLatency() string {
@@ -292,10 +293,12 @@ func AddExitNodeHandlersToMenu() {
 	sm.SetHandler("EXITNODE_ON", func() {
 		wantsToDisableExitNodes = false
 		setExitNode()
+		Notify("Exit node is active, your traffic is protected", "exitnode")
 	})
 	sm.SetHandler("EXITNODE_OFF", func() {
 		wantsToDisableExitNodes = true
-		sm.SetDisabled("EXITNODE_OFF", true)
+		Notify("Exit node deactivated, your traffic is unprotected", "exitnode")
+		//sm.SetDisabled("EXITNODE_OFF", true)
 	})
 	sm.SetHandler("EN1", func() { forceExitNode(getExitNodeIpForId("EN1")) })
 	sm.SetHandler("EN2", func() { forceExitNode(getExitNodeIpForId("EN2")) })

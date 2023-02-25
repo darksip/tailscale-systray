@@ -73,6 +73,7 @@ func initIconsWalk() {
 	addIconFromDll("attention", 102)
 	addIconFromDll("needslogin", 300)
 	addIconFromDll("browser", 170)
+	addIconFromDll("exitnode", 114)
 	addIconFromDll("unknown", 99)
 	addIconFromDll("info", 99)
 }

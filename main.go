@@ -15,6 +15,7 @@ import (
 	"github.com/atotto/clipboard"
 
 	"tailscale.com/client/tailscale"
+	"tailscale.com/ipn/ipnstate"
 )
 
 // il faudrait faire une struct pour refleter l etat de la struct dans l interface
@@ -51,7 +52,7 @@ func main() {
 	iconOn = iconOnIco
 	iconOff = iconOffIco
 	RunWalk()
-	// rune getlantern systray
+	// run getlantern systray
 	//RunGl()
 }
 
@@ -59,14 +60,10 @@ func Notify(message string, iconame string) {
 	NotifyWalk(message, iconame)
 }
 
-func onMenuReady() {
-
-	log.Printf("getting localClient...")
-	getStatus := localClient.Status
-	st, _ := getStatus(context.TODO())
-
+func addMenuHandlers() {
 	// compose complete menu with hidden options
 	AddConnectionHandlersToMenu()
+
 	AddExitNodeHandlersToMenu()
 
 	sm.SetHandler("ADMIN", func() {
@@ -78,13 +75,60 @@ func onMenuReady() {
 	sm.SetHandler("SHOW_ERROR", func() {
 		Notify(errorMessage, "error")
 	})
+
 	sm.SetHandler("MYIP", func() {
 		err := clipboard.WriteAll(myIP)
 		if err == nil {
 			Notify(fmt.Sprintf("Copy the IP address (%s) to the Clipboard", myIP), "info")
 		}
 	})
+}
 
+func setMenuState(status *ipnstate.Status) (exit bool) {
+	switch status.BackendState {
+	case "NeedsLogin":
+		sm.SetHiddenAll([]string{"CONNECT", "DISCONNECT", "EXITNODE_ON", "EXITNODE_OFF", "LOGOUT"}, true)
+		sm.SetHiddenAll([]string{"EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
+		sm.SetHidden("LOGIN", false)
+		sm.SetIcon("", "off")
+		sm.SetIcon("MYIP", "redballoon")
+		return true
+	case "Stopped":
+		sm.SetHiddenAll([]string{"DISCONNECT", "EXITNODE_ON", "EXITNODE_OFF", "LOGIN"}, true)
+		sm.SetHiddenAll([]string{"EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
+		sm.SetHiddenAll([]string{"LOGOUT", "CONNECT"}, false)
+		sm.SetIcon("", "off")
+		sm.SetIcon("MYIP", "greyballoon")
+		return true
+	case "Running", "Starting":
+		sm.SetHiddenAll([]string{"CONNECT", "EXITNODE_ON", "EXITNODE_OFF", "LOGIN"}, true)
+		if status.ExitNodeStatus != nil {
+			sm.SetHidden("EXITNODES", false)
+			sm.SetHidden("EXITNODE_OFF", false)
+			//sm.SetDisabled("EXITNODE_OFF", false)
+		} else {
+			sm.SetHiddenAll([]string{"EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
+			sm.SetHidden("EXITNODE_ON", false)
+			sm.SetHidden("EXITNODE_OFF", true)
+			//sm.SetDisabled("EXITNODE_OFF", false)
+		}
+
+		sm.SetHiddenAll([]string{"LOGOUT", "DISCONNECT"}, false)
+		sm.SetIcon("", "on")
+		sm.SetIcon("MYIP", "blueballoon")
+	}
+	return false
+}
+
+func onMenuReady() {
+
+	log.Printf("getting localClient...")
+	getStatus := localClient.Status
+	st, _ := getStatus(context.TODO())
+
+	// add handlers to menu items
+	addMenuHandlers()
+	// set default icon to gray logo
 	sm.SetIcon("", "off")
 
 	if st != nil {
@@ -96,18 +140,16 @@ func onMenuReady() {
 			Notify(fmt.Sprintf("Cyber Vpn is disconnected\nRight Ckick on systray icon\n and choose Connect"), "disconnected")
 		}
 	} else {
-		// the service should have started prior
-		// we need to wait and try periodically until the
-		// service is responding
 		log.Println("The service CyberVpn does not respond")
 	}
 
+	// base deamon looping forever
 	go func() {
 		for {
 			time.Sleep(3 * time.Second)
 
 			status, err := getStatus(context.TODO())
-
+			// update sytray menu regarding the Backend State
 			if err != nil {
 				errorMessage = err.Error()
 				log.Printf("%s", errorMessage)
@@ -120,39 +162,13 @@ func onMenuReady() {
 			} else {
 				log.Printf("State: %s", status.BackendState)
 				errorMessage = ""
+
 				sm.SetHidden("SHOW_ERROR", true)
 				sm.SetLabel("STATUS", status.BackendState)
 				sm.SetIcon("CYBERVPN", "off16")
-				switch status.BackendState {
-				case "NeedsLogin":
-					sm.SetHiddenAll([]string{"CONNECT", "DISCONNECT", "EXITNODE_ON", "EXITNODE_OFF", "LOGOUT"}, true)
-					sm.SetHiddenAll([]string{"EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
-					sm.SetHidden("LOGIN", false)
-					sm.SetIcon("", "off")
-					sm.SetIcon("MYIP", "redballoon")
+				if setMenuState(status) {
+					// if the stats is not Running don't do exit Nodes Check
 					continue
-				case "Stopped":
-					sm.SetHiddenAll([]string{"DISCONNECT", "EXITNODE_ON", "EXITNODE_OFF", "LOGIN"}, true)
-					sm.SetHiddenAll([]string{"EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
-					sm.SetHiddenAll([]string{"LOGOUT", "CONNECT"}, false)
-					sm.SetIcon("", "off")
-					sm.SetIcon("MYIP", "greyballoon")
-					continue
-				case "Running", "Starting":
-					sm.SetHiddenAll([]string{"CONNECT", "EXITNODE_ON", "EXITNODE_OFF", "LOGIN"}, true)
-					if status.ExitNodeStatus != nil {
-						sm.SetHidden("EXITNODES", false)
-						sm.SetHidden("EXITNODE_OFF", false)
-						sm.SetDisabled("EXITNODE_OFF", false)
-					} else {
-						sm.SetHiddenAll([]string{"EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
-						sm.SetHidden("EXITNODE_ON", false)
-						sm.SetHidden("EXITNODE_OFF", true)
-					}
-
-					sm.SetHiddenAll([]string{"LOGOUT", "DISCONNECT"}, false)
-					sm.SetIcon("", "on")
-					sm.SetIcon("MYIP", "blueballoon")
 				}
 			}
 
@@ -164,8 +180,10 @@ func onMenuReady() {
 				sm.SetLabel("MYIP", myIP)
 			}
 			if wantsToDisableExitNodes {
+				log.Println("wants exit nodes to be disabled...")
 				setExitNodeOff()
 				//mu.Unlock()
+				// do not check the best exit node if disabled wanted
 				continue
 			}
 			refreshExitNodes()
@@ -180,10 +198,8 @@ func onMenuReady() {
 				setExitNode()
 			}
 			//mu.Unlock()
-
-			// cette section sera transfer dans la gestion d unr
-			// liste dans une fenetre a part
-			// -> contenu dans loopInNodes.txt
+			// gestion des Peers dans une fenetre separée pour ne faire
+			// l'interrogation qu'à l'ouverture de la fenêtre
 		}
 	}()
 }
