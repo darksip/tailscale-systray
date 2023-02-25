@@ -2,14 +2,14 @@
     "FixedFileInfo": {
         "FileVersion": {
             "Major": 0,
-            "Minor": 20,
-            "Patch": 5,
+            "Minor": 21,
+            "Patch": 0,
             "Build": 0
         },
         "ProductVersion": {
             "Major": 0,
-            "Minor": 20,
-            "Patch": 5,
+            "Minor": 21,
+            "Patch": 0,
             "Build": 0
         },
         "FileFlagsMask": "3f",
@@ -29,7 +29,7 @@
         "OriginalFilename": "",
         "PrivateBuild": "",
         "ProductName": "CyberVpn",
-        "ProductVersion": "v1.20.5.0",
+        "ProductVersion": "v1.21.0.0",
         "SpecialBuild": ""
     },
     "VarFileInfo": {
