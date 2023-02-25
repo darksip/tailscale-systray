@@ -270,12 +270,12 @@ func showOrderedExitNode(ben string) {
 		sm.SetLabel(id, label)
 		sm.SetHidden(id, false)
 		if ipl.Ip == activeExitNode {
-			sm.SetIcon(id, iconBlueArrow)
+			sm.SetIcon(id, "bluearrow")
 		} else {
 			if ipl.Ip == ben {
-				sm.SetIcon(id, iconGreyArrow)
+				sm.SetIcon(id, "greyarrow")
 			} else {
-				sm.SetIcon(id, iconEmpty)
+				sm.SetIcon(id, "empty")
 			}
 		}
 

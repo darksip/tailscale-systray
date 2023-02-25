@@ -4,7 +4,7 @@ package main
 
 import (
 	"context"
-	_ "embed"
+
 	"fmt"
 	"log"
 	"net"
@@ -15,34 +15,6 @@ import (
 	"github.com/atotto/clipboard"
 
 	"tailscale.com/client/tailscale"
-)
-
-var (
-	//go:embed icon/on.png
-	iconOnPng []byte
-	//go:embed icon/off.png
-	iconOffPng []byte
-	//go:embed icon/on64.ico
-	iconOnIco []byte
-	//go:embed icon/off64.ico
-	iconOffIco []byte
-	//go:embed icon/empty16.ico
-	iconEmpty []byte
-	//go:embed icon/icoOn16.ico
-	iconOn16 []byte
-	//go:embed icon/bluebaloon.ico
-	iconBlueBaloon []byte
-	//go:embed icon/greybaloon.ico
-	iconGreyBaloon []byte
-	//go:embed icon/redbaloon.ico
-	iconRedBaloon []byte
-	//go:embed icon/fleche16.ico
-	iconBlueArrow []byte
-	//go:embed icon/fleche16Off.ico
-	iconGreyArrow []byte
-
-	iconOn  []byte
-	iconOff []byte
 )
 
 // il faudrait faire une struct pour refleter l etat de la struct dans l interface
@@ -78,8 +50,13 @@ func main() {
 
 	iconOn = iconOnIco
 	iconOff = iconOffIco
+	RunWalk()
 	// rune getlantern systray
-	RunGl()
+	//RunGl()
+}
+
+func Notify(message string) {
+	NotifyWalk(message)
 }
 
 func onMenuReady() {
@@ -108,7 +85,7 @@ func onMenuReady() {
 		}
 	})
 
-	sm.SetIcon("", iconOff)
+	sm.SetIcon("", "off")
 
 	if st != nil {
 		if st.BackendState == "NeedsLogin" {
@@ -135,27 +112,27 @@ func onMenuReady() {
 				sm.SetHiddenAll([]string{"EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
 
 				sm.SetHidden("SHOW_ERROR", false)
-				sm.SetIcon("", iconOff)
+				sm.SetIcon("", "off")
 				continue
 			} else {
 				errorMessage = ""
 				sm.SetHidden("SHOW_ERROR", true)
 				sm.SetLabel("STATUS", status.BackendState)
-				sm.SetIcon("CYBERVPN", iconOn16)
+				sm.SetIcon("CYBERVPN", "off16")
 				switch status.BackendState {
 				case "NeedsLogin":
 					sm.SetHiddenAll([]string{"CONNECT", "DISCONNECT", "EXITNODE_ON", "EXINODE_OFF", "LOGOUT"}, true)
 					sm.SetHiddenAll([]string{"EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
 					sm.SetHidden("LOGIN", false)
-					sm.SetIcon("", iconOff)
-					sm.SetIcon("MYIP", iconRedBaloon)
+					sm.SetIcon("", "off")
+					sm.SetIcon("MYIP", "redballoon")
 					continue
 				case "Stopped":
 					sm.SetHiddenAll([]string{"DISCONNECT", "EXITNODE_ON", "EXINODE_OFF", "LOGIN"}, true)
 					sm.SetHiddenAll([]string{"EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
 					sm.SetHiddenAll([]string{"LOGOUT", "CONNECT"}, false)
-					sm.SetIcon("", iconOff)
-					sm.SetIcon("MYIP", iconGreyBaloon)
+					sm.SetIcon("", "off")
+					sm.SetIcon("MYIP", "greyballoon")
 					continue
 				case "Running", "Starting":
 					sm.SetHiddenAll([]string{"CONNECT", "EXITNODE_ON", "EXINODE_OFF", "LOGIN"}, true)
@@ -170,8 +147,8 @@ func onMenuReady() {
 					}
 
 					sm.SetHiddenAll([]string{"LOGOUT", "DISCONNECT"}, false)
-					sm.SetIcon("", iconOn)
-					sm.SetIcon("MYIP", iconBlueBaloon)
+					sm.SetIcon("", "on")
+					sm.SetIcon("MYIP", "blueballoon")
 				}
 			}
 

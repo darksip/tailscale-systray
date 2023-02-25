@@ -39,5 +39,5 @@
         }
     },
     "IconPath": "./icon/on.ico",
-    "ManifestPath": ""
+    "ManifestPath": "./manifest.xml"
 }

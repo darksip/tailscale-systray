@@ -21,7 +21,7 @@ type SysMenu struct {
 	addCallback     func(e Melt)
 	setHndCallback  func(id string, e EvtHnd)
 	setLabel        func(id string, label string)
-	setIcon         func(id string, icon []byte)
+	setIcon         func(id string, iconame string)
 }
 
 func (sm *SysMenu) GetById(id string) (*Melt, error) {
@@ -35,7 +35,7 @@ func (sm *SysMenu) GetById(id string) (*Melt, error) {
 
 func NewSysMenu(hideCB func(id string, v bool), disableCB func(id string, v bool),
 	add func(e Melt), hndCB func(id string, e EvtHnd),
-	lbl func(id string, l string), setico func(id string, ico []byte)) *SysMenu {
+	lbl func(id string, l string), setico func(id string, iconame string)) *SysMenu {
 	sm := &SysMenu{
 		Items:           []Melt{},
 		hideCallback:    hideCB,
@@ -99,6 +99,6 @@ func (sm *SysMenu) SetLabel(id string, label string) {
 	}
 }
 
-func (sm *SysMenu) SetIcon(id string, ico []byte) {
-	sm.setIcon(id, ico)
+func (sm *SysMenu) SetIcon(id string, iconame string) {
+	sm.setIcon(id, iconame)
 }

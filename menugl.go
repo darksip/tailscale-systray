@@ -15,6 +15,7 @@ var (
 )
 
 func RunGl() {
+	initGLIcons()
 	systray.Run(onReady, nil)
 }
 
@@ -70,12 +71,14 @@ func SetupMenuGL() {
 			mi.SetTitle(l)
 		}
 	}
-	setico = func(id string, ico []byte) {
-		if id == "" {
-			systray.SetIcon(ico)
-		} else {
-			if mi, ok := menuItems[id]; ok == true {
-				mi.SetIcon(ico)
+	setico = func(id string, iconame string) {
+		if ico, ok := iconsGL[iconame]; ok {
+			if id == "" {
+				systray.SetIcon(ico)
+			} else {
+				if mi, ok := menuItems[id]; ok == true {
+					mi.SetIcon(ico)
+				}
 			}
 		}
 	}
@@ -96,7 +99,7 @@ func waitForClick(m *systray.MenuItem, hnd sysmenu.EvtHnd) {
 	}
 }
 
-func Notify(message string) {
+func NotifyGL(message string) {
 	if strings.Contains(strings.ToLower(message), "tailscale") {
 		message = strings.ReplaceAll(strings.ToLower(message), "tailscale", "cybervpn")
 	}

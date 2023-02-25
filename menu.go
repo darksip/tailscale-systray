@@ -11,7 +11,7 @@ var (
 	add    func(e sysmenu.Melt)
 	sethnd func(id string, e sysmenu.EvtHnd)
 	setlbl func(id string, lbl string)
-	setico func(id string, ico []byte)
+	setico func(id string, iconame string)
 )
 
 // map id
