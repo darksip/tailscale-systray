@@ -9,20 +9,15 @@ import (
 	"github.com/lxn/walk"
 )
 
-type widthAndDllIdx struct {
-	width int
-	idx   int32
-	dll   string
-}
-
-var cachedSystemIconsForWidthAndDllIdx = make(map[widthAndDllIdx]*walk.Icon)
-
 //go:embed icon
 var iconFS embed.FS
 
 var iconsWalk map[string]*walk.Icon
 var iconPath string
 
+// icons are embeded in exe file but needs to be extracted to
+// be used in walk functions
+// we extract them in appdata when starting the exe
 func extractIcons(iconPath string) {
 	embs, err := iconFS.ReadDir("icon")
 	if err == nil {
@@ -80,38 +75,4 @@ func initIconsWalk() {
 	addIconFromDll("browser", 170)
 	addIconFromDll("unknown", 99)
 	addIconFromDll("info", 99)
-}
-
-func loadSystemIcon(dll string, index int32, size int) (icon *walk.Icon, err error) {
-	icon = cachedSystemIconsForWidthAndDllIdx[widthAndDllIdx{size, index, dll}]
-	if icon != nil {
-		return
-	}
-	icon, err = walk.NewIconFromSysDLLWithSize(dll, int(index), size)
-	if err == nil {
-		cachedSystemIconsForWidthAndDllIdx[widthAndDllIdx{size, index, dll}] = icon
-	}
-	return
-}
-
-func loadShieldIcon(size int) (icon *walk.Icon, err error) {
-	icon, err = loadSystemIcon("imageres", 73, size)
-	if err != nil {
-		icon, err = loadSystemIcon("imageres", 1, size)
-	}
-	return
-}
-
-var cachedLogoIconsForWidth = make(map[int]*walk.Icon)
-
-func loadLogoIcon(size int) (icon *walk.Icon, err error) {
-	icon = cachedLogoIconsForWidth[size]
-	if icon != nil {
-		return
-	}
-	icon, err = walk.NewIconFromResourceIdWithSize(7, walk.Size{size, size})
-	if err == nil {
-		cachedLogoIconsForWidth[size] = icon
-	}
-	return
 }
