@@ -20,6 +20,8 @@ var (
 	appdatapath   = fmt.Sprintf("%s\\%s", os.Getenv("ProgramData"), appName)
 	excludeCirds  = ""
 	npingsCheck   = 100
+	authKey       = ""
+	noExitNode    = 0
 )
 
 func loadEnv() {
@@ -47,9 +49,16 @@ func loadEnv() {
 		}
 		browserMethod = os.Getenv("BROWSER_METHOD")
 		adminMode = os.Getenv("ADMIN_MODE")
+		authKey = os.Getenv("AUTH_KEY")
+
 		if val := os.Getenv("NPINGS"); val != "" {
 			if i, err := strconv.Atoi(val); err == nil {
 				npingsCheck = i
+			}
+		}
+		if val := os.Getenv("NO_EXIT_NODE"); val != "" {
+			if i, err := strconv.Atoi(val); err == nil {
+				noExitNode = i
 			}
 		}
 	}
