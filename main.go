@@ -64,7 +64,9 @@ func addMenuHandlers() {
 	// compose complete menu with hidden options
 	AddConnectionHandlersToMenu()
 
-	AddExitNodeHandlersToMenu()
+	if noExitNode == 0 {
+		AddExitNodeHandlersToMenu()
+	}
 
 	sm.SetHandler("ADMIN", func() {
 		err := openBrowser(adminUrl)
@@ -112,7 +114,6 @@ func setMenuState(status *ipnstate.Status) (exit bool) {
 			sm.SetHidden("EXITNODE_OFF", true)
 			//sm.SetDisabled("EXITNODE_OFF", false)
 		}
-
 		sm.SetHiddenAll([]string{"LOGOUT", "DISCONNECT"}, false)
 		sm.SetIcon("", "on")
 		sm.SetIcon("MYIP", "blueballoon")
@@ -167,11 +168,17 @@ func onMenuReady() {
 				sm.SetLabel("STATUS", status.BackendState)
 				sm.SetIcon("CYBERVPN", "off16")
 				if setMenuState(status) {
+					if noExitNode > 0 {
+						sm.SetHiddenAll([]string{"EXITNODE_ON", "EXITNODE_OFF", "EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
+					}
 					// if the stats is not Running don't do exit Nodes Check
 					continue
 				}
 			}
 
+			if noExitNode > 0 {
+				sm.SetHiddenAll([]string{"EXITNODE_ON", "EXITNODE_OFF", "EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
+			}
 			//mu.Lock()
 
 			if len(status.TailscaleIPs) != 0 {
@@ -186,17 +193,20 @@ func onMenuReady() {
 				// do not check the best exit node if disabled wanted
 				continue
 			}
-			refreshExitNodes()
-			bestIp := checkLatency()
-			showOrderedExitNode(bestIp)
-			if status.ExitNodeStatus != nil {
-				if len(status.ExitNodeStatus.TailscaleIPs) > 1 {
-					activeExitNode = status.ExitNodeStatus.TailscaleIPs[1].Addr().String()
-					checkActiveNodeAndSetExitNode()
+			if noExitNode == 0 {
+				refreshExitNodes()
+				bestIp := checkLatency()
+				showOrderedExitNode(bestIp)
+				if status.ExitNodeStatus != nil {
+					if len(status.ExitNodeStatus.TailscaleIPs) > 1 {
+						activeExitNode = status.ExitNodeStatus.TailscaleIPs[1].Addr().String()
+						checkActiveNodeAndSetExitNode()
+					}
+				} else {
+					setExitNode()
 				}
-			} else {
-				setExitNode()
 			}
+
 			//mu.Unlock()
 			// gestion des Peers dans une fenetre separée pour ne faire
 			// l'interrogation qu'à l'ouverture de la fenêtre

@@ -27,11 +27,17 @@ func disconnectReconnect() {
 
 func doLogin() {
 
-	log.Printf("Do login by opening browser")
-	//Notify("Login process, \na browser window should open...")
-	out, _ := execCommand(cliExecutable, "login", "--login-server", rootUrl, "--accept-routes", "--unattended", "--timeout", "3s")
-	// check Authurl
-	log.Println(string(out))
+	if authKey != "" {
+		out, _ := execCommand(cliExecutable, "login", "--login-server", rootUrl, "--authkey", authKey, "--accept-routes", "--unattended", "--timeout", "3s")
+		log.Println(string(out))
+	} else {
+		log.Printf("Do login by opening browser")
+		//Notify("Login process, \na browser window should open...")
+		out, _ := execCommand(cliExecutable, "login", "--login-server", rootUrl, "--accept-routes", "--unattended", "--timeout", "3s")
+		// check Authurl
+		log.Println(string(out))
+	}
+
 	var urlLogin = ""
 	// get func to query status
 	getStatus := localClient.Status
@@ -44,6 +50,10 @@ func doLogin() {
 			return
 		}
 		log.Printf("status: %s", status.BackendState)
+		if status.BackendState == "Running" || status.BackendState == "Starting" {
+			Notify("Autentication Complete", "connected")
+			return
+		}
 		log.Printf("url: %s", status.AuthURL)
 		if len(status.AuthURL) > 0 {
 			urlLogin = status.AuthURL

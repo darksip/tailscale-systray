@@ -189,7 +189,9 @@ func forceExitNode(exitNode string) {
 }
 
 func setExitNode() {
-
+	if noExitNode > 0 {
+		return
+	}
 	refreshExitNodes()
 	exitNode := checkLatency()
 	//exitNode := getBestExitNodeIp()
