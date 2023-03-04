@@ -88,7 +88,7 @@ func addMenuHandlers() {
 
 func setMenuState(status *ipnstate.Status) (exit bool) {
 	switch status.BackendState {
-	case "NeedsLogin":
+	case "NeedsLogin", "NoState":
 		sm.SetHiddenAll([]string{"CONNECT", "DISCONNECT", "EXITNODE_ON", "EXITNODE_OFF", "LOGOUT"}, true)
 		sm.SetHiddenAll([]string{"EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
 		sm.SetHidden("LOGIN", false)
