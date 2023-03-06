@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+var (
+	loginIsProcessing = false
+)
+
 func getBackenState() string {
 	st, _ := localClient.Status(context.TODO())
 	return st.BackendState
@@ -25,7 +29,12 @@ func disconnectReconnect() {
 	}
 }
 
+// TODO implementer un fct asynchrone pur que le menu
+// continue de fctner
 func doLogin() {
+
+	manualLogout = 0
+	loginIsProcessing = true
 
 	if authKey != "" {
 		out, _ := execCommand(cliExecutable, "login", "--login-server", rootUrl, "--authkey", authKey, "--accept-routes", "--unattended", "--timeout", "3s")
@@ -75,10 +84,20 @@ func doLogin() {
 		Notify(errb.Error(), "error")
 	}
 	// wait for status change
+
+	ctry := 0
 	for {
 		time.Sleep(2 * time.Second)
 		//st, _ := localClient.Status(context.TODO())
+		ctry += 2
+		if ctry > connectionTimeout {
+			Notify("Connection timeout\nCyber Vpn has failed to connect did you perform authentication ?\nTry again using login in systray menu", "disconnected")
+			sm.SetDisabled("LOGIN", false)
+			loginIsProcessing = false
+			break
+		}
 		if getBackenState() == "Running" {
+			loginIsProcessing = false
 			Notify("Authentication complete", "connected")
 			break
 		}
@@ -87,6 +106,10 @@ func doLogin() {
 	// check for the needs of a needs of an exit node
 	setExitNode()
 	//log.Print(exitNodeParam)
+}
+
+func doConnect() {
+
 }
 
 func doConnection(verb string) {
@@ -122,10 +145,15 @@ func doConnection(verb string) {
 func AddConnectionHandlersToMenu() {
 	sm.SetHandler("LOGIN", func() {
 		sm.SetDisabled("LOGIN", true)
-		doLogin()
-		sm.SetDisabled("LOGIN", false)
+		go func() {
+			doLogin()
+			sm.SetDisabled("LOGIN", false)
+		}()
 	})
-	sm.SetHandler("LOGOUT", func() { doConnection("logout") })
+	sm.SetHandler("LOGOUT", func() {
+		manualLogout = 1
+		doConnection("logout")
+	})
 	sm.SetHandler("CONNECT", func() { doConnection("up") })
 	sm.SetHandler("DISCONNECT", func() { doConnection("down") })
 }
