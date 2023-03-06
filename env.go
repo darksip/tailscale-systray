@@ -11,17 +11,19 @@ import (
 )
 
 var (
-	clientId      = ""
-	rootUrl       = "https://head.cyberfile.fr"
-	browserMethod = "RUNDLL"
-	adminUrl      = rootUrl + "/web"
-	appName       = "CyberVpn"
-	adminMode     = "off"
-	appdatapath   = fmt.Sprintf("%s\\%s", os.Getenv("ProgramData"), appName)
-	excludeCirds  = ""
-	npingsCheck   = 100
-	authKey       = ""
-	noExitNode    = 0
+	clientId          = ""
+	rootUrl           = "https://head.cyberfile.fr"
+	browserMethod     = "RUNDLL"
+	adminUrl          = rootUrl + "/web"
+	appName           = "CyberVpn"
+	adminMode         = "off"
+	appdatapath       = fmt.Sprintf("%s\\%s", os.Getenv("ProgramData"), appName)
+	excludeCirds      = ""
+	npingsCheck       = 100
+	authKey           = ""
+	noExitNode        = 0
+	connectionTimeout = 120
+	manualLogout      = 0
 )
 
 func loadEnv() {
@@ -56,6 +58,12 @@ func loadEnv() {
 				npingsCheck = i
 			}
 		}
+		if val := os.Getenv("CONNECTION_TIMEOUT"); val != "" {
+			if i, err := strconv.Atoi(val); err == nil {
+				connectionTimeout = i
+			}
+		}
+
 		if val := os.Getenv("NO_EXIT_NODE"); val != "" {
 			if i, err := strconv.Atoi(val); err == nil {
 				noExitNode = i

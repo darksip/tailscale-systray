@@ -104,6 +104,7 @@ func setMenuState(status *ipnstate.Status) (exit bool) {
 		return true
 	case "Running", "Starting":
 		sm.SetHiddenAll([]string{"CONNECT", "EXITNODE_ON", "EXITNODE_OFF", "LOGIN"}, true)
+		sm.SetDisabled("LOGIN", true)
 		if status.ExitNodeStatus != nil {
 			sm.SetHidden("EXITNODES", false)
 			sm.SetHidden("EXITNODE_OFF", false)
@@ -133,12 +134,14 @@ func onMenuReady() {
 	sm.SetIcon("", "off")
 
 	if st != nil {
-		if st.BackendState == "NeedsLogin" {
+		if st.BackendState == "NeedsLogin" || st.BackendState == "NoState" {
 			Notify("Cyber Vpn needs you to login...\nPlease wait while trying to reach the server...", "needslogin")
-			doLogin()
+			sm.SetDisabled("LOGIN", true)
+			go doLogin()
 		}
 		if strings.ToLower(st.BackendState) == "stopped" {
 			Notify(fmt.Sprintf("Cyber Vpn is disconnected\nRight Ckick on systray icon\n and choose Connect"), "disconnected")
+			sm.SetDisabled("LOGIN", false)
 		}
 	} else {
 		log.Println("The service CyberVpn does not respond")
@@ -171,7 +174,18 @@ func onMenuReady() {
 					if noExitNode > 0 {
 						sm.SetHiddenAll([]string{"EXITNODE_ON", "EXITNODE_OFF", "EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
 					}
-					// if the stats is not Running don't do exit Nodes Check
+					// if the status is NeedsLogin or NoState and manualLogout==0
+					// probably neeeds login after token expiration in sleep mode
+					if (status.BackendState == "NeedsLogin" || status.BackendState == "NoState") && (manualLogout == 0) {
+						if !loginIsProcessing {
+							go func() {
+								sm.SetDisabled("LOGIN", true)
+								doLogin()
+							}()
+						}
+					}
+
+					// if the state is not Running don't do exitNodes Check
 					continue
 				}
 			}

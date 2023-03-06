@@ -17,13 +17,13 @@ type Melt struct {
 }
 
 type SysMenu struct {
-	Items           []Melt
-	hideCallback    func(id string, value bool)
-	disableCallBack func(id string, value bool)
-	addCallback     func(e Melt)
-	setHndCallback  func(id string, e EvtHnd)
-	setLabel        func(id string, label string)
-	setIcon         func(id string, iconame string)
+	Items          []Melt
+	hideCallback   func(id string, value bool)
+	enableCallBack func(id string, value bool)
+	addCallback    func(e Melt)
+	setHndCallback func(id string, e EvtHnd)
+	setLabel       func(id string, label string)
+	setIcon        func(id string, iconame string)
 }
 
 func (sm *SysMenu) GetById(id string) (*Melt, error) {
@@ -35,17 +35,17 @@ func (sm *SysMenu) GetById(id string) (*Melt, error) {
 	return nil, fmt.Errorf("item with ID %q not found", id)
 }
 
-func NewSysMenu(hideCB func(id string, v bool), disableCB func(id string, v bool),
+func NewSysMenu(hideCB func(id string, v bool), enableCB func(id string, v bool),
 	add func(e Melt), hndCB func(id string, e EvtHnd),
 	lbl func(id string, l string), setico func(id string, iconame string)) *SysMenu {
 	sm := &SysMenu{
-		Items:           []Melt{},
-		hideCallback:    hideCB,
-		disableCallBack: disableCB,
-		addCallback:     add,
-		setHndCallback:  hndCB,
-		setLabel:        lbl,
-		setIcon:         setico,
+		Items:          []Melt{},
+		hideCallback:   hideCB,
+		enableCallBack: enableCB,
+		addCallback:    add,
+		setHndCallback: hndCB,
+		setLabel:       lbl,
+		setIcon:        setico,
 	}
 	return sm
 }
@@ -72,7 +72,7 @@ func (sm *SysMenu) SetDisabled(id string, v bool) {
 		if sm.Items[i].Id == id {
 			if sm.Items[i].Disabled != v {
 				sm.Items[i].Disabled = v
-				sm.disableCallBack(id, v)
+				sm.enableCallBack(id, !v)
 			}
 		}
 	}
