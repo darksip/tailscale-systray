@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"tailscale.com/ipn"
 	"tailscale.com/tailcfg"
 )
 
@@ -79,13 +80,24 @@ func checkActiveNodeAndSetExitNode() {
 }
 
 func removeExitNode() {
-	o, errset := execCommand(cliExecutable, "set", `--exit-node=`)
-	if errset != nil {
-		log.Printf("%s", o)
-		log.Printf(errset.Error())
+	p, _ := localClient.GetPrefs(context.TODO())
+	if p.ExitNodeID.IsZero() {
+		log.Printf("No exit Node to remove")
+		return
 	}
-	activeExitNode = ""
-	log.Println("exit node disabled")
+	p.ClearExitNode()
+	pmp := new(ipn.MaskedPrefs)
+	pmp.Prefs = *p
+	pmp.ExitNodeIDSet = true
+
+	np, err := localClient.EditPrefs(context.TODO(), pmp)
+	if err != nil {
+		log.Printf("%s", err.Error())
+	}
+	if np.ExitNodeID.IsZero() {
+		activeExitNode = ""
+		log.Println("exit node disabled")
+	}
 }
 
 func checkLatency() string {
@@ -170,19 +182,30 @@ func isStillActive(active string) bool {
 
 func forceExitNode(exitNode string) {
 	if len(exitNode) > 0 {
+		st, err := localClient.Status(context.TODO())
+		if err != nil {
+			log.Printf("%s", err.Error())
+		}
+
+		p, _ := localClient.GetPrefs(context.TODO())
 		log.Printf("best exit node : %s", exitNode)
 		// set exit and allow lan access local
 		checkExitNodeConnection(exitNode)
-		exitNodeParam := fmt.Sprintf(`--exit-node=%s`, exitNode)
-		o, errset := execCommand(cliExecutable, "set", exitNodeParam)
-		if errset != nil {
-			log.Printf("%s", o)
-			log.Printf(errset.Error())
-		} else {
+
+		pmp := new(ipn.MaskedPrefs)
+		pmp.Prefs = *p
+		pmp.ExitNodeIDSet = true
+		pmp.SetExitNodeIP(exitNode, st)
+		pmp.ExitNodeIPSet = true
+		pmp.ExitNodeAllowLANAccess = true
+		pmp.ExitNodeAllowLANAccessSet = true
+
+		np, err := localClient.EditPrefs(context.TODO(), pmp)
+		if err != nil {
+			log.Printf("%s", err.Error())
+		}
+		if np.ExitNodeIP.IsValid() {
 			activeExitNode = exitNode
-			//menuExitNode.SetTitle("Set Exit Node Off")
-			o, errset = execCommand(cliExecutable, "set", "--exit-node-allow-lan-access")
-			// reset ping count
 			nping = 0
 		}
 	}

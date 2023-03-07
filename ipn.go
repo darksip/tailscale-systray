@@ -42,26 +42,22 @@ var (
 // It returns simpleUp if we're running a simple "tailscale up" to
 // transition to running from a previously-logged-in but down state,
 // without changing any settings.
-func updatePrefs(prefs, curPrefs *ipn.Prefs, env upCheckEnv) (simpleUp bool, justEditMP *ipn.MaskedPrefs, err error) {
-	if !env.upArgs.reset {
-		applyImplicitPrefs(prefs, curPrefs, env)
-	}
+func updatePrefs(prefs, curPrefs *ipn.Prefs, env upCheckEnv, backendState string, authKey string, forceReauth bool) (simpleUp bool, justEditMP *ipn.MaskedPrefs, err error) {
+	// if !env.upArgs.reset {
+	// 	applyImplicitPrefs(prefs, curPrefs, env)
+	// }
 
-	controlURLChanged := curPrefs.ControlURL != prefs.ControlURL &&
-		!(ipn.IsLoginServerSynonym(curPrefs.ControlURL) && ipn.IsLoginServerSynonym(prefs.ControlURL))
-	if controlURLChanged && env.backendState == ipn.Running.String() && !env.upArgs.forceReauth {
-		return false, nil, fmt.Errorf("can't change --login-server without --force-reauth")
-	}
+	controlURLChanged := curPrefs.ControlURL != prefs.ControlURL
 
 	tagsChanged := !reflect.DeepEqual(curPrefs.AdvertiseTags, prefs.AdvertiseTags)
 
 	simpleUp = curPrefs.Persist != nil &&
 		curPrefs.Persist.LoginName != "" &&
-		env.backendState != ipn.NeedsLogin.String()
+		backendState != ipn.NeedsLogin.String()
 
-	justEdit := env.backendState == ipn.Running.String() &&
-		!env.upArgs.forceReauth &&
-		env.upArgs.authKeyOrFile == "" &&
+	justEdit := backendState == ipn.Running.String() &&
+		!forceReauth &&
+		authKey == "" &&
 		!controlURLChanged &&
 		!tagsChanged
 
@@ -69,6 +65,7 @@ func updatePrefs(prefs, curPrefs *ipn.Prefs, env upCheckEnv) (simpleUp bool, jus
 		justEditMP = new(ipn.MaskedPrefs)
 		justEditMP.WantRunningSet = true
 		justEditMP.Prefs = *prefs
+
 		visitFlags := env.flagSet.Visit
 		if env.upArgs.reset {
 			visitFlags = env.flagSet.VisitAll
@@ -227,7 +224,7 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 		curExitNodeIP: exitNodeIP(curPrefs, st),
 	}
 
-	simpleUp, justEditMP, err := updatePrefs(prefs, curPrefs, env)
+	simpleUp, justEditMP, err := updatePrefs(prefs, curPrefs, env, st.BackendState, authKey, forceReauth)
 	if err != nil {
 		log.Printf("%s", err)
 	}

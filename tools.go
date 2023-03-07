@@ -16,7 +16,7 @@ import (
 // l'execution
 //
 //	https://github.com/golang/go/issues/43724
-var cliExecutable = ".\\cybcli.exe"
+//var cliExecutable = ".\\cybcli.exe"
 
 func openBrowser(url string) error {
 	log.Printf("open url : %s", url)
