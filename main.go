@@ -92,6 +92,7 @@ func setMenuState(status *ipnstate.Status) (exit bool) {
 		sm.SetHiddenAll([]string{"CONNECT", "DISCONNECT", "EXITNODE_ON", "EXITNODE_OFF", "LOGOUT"}, true)
 		sm.SetHiddenAll([]string{"EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
 		sm.SetHidden("LOGIN", false)
+		sm.SetDisabled("LOGIN", false)
 		sm.SetIcon("", "off")
 		sm.SetIcon("MYIP", "redballoon")
 		return true
@@ -176,15 +177,19 @@ func onMenuReady() {
 					}
 					// if the status is NeedsLogin or NoState and manualLogout==0
 					// probably neeeds login after token expiration in sleep mode
-					if (status.BackendState == "NeedsLogin" || status.BackendState == "NoState") && (manualLogout == 0) {
-						if !loginIsProcessing {
+					if status.BackendState == "NeedsLogin" || status.BackendState == "NoState" {
+						if !loginIsProcessing && manualLogout == 0 {
+							// user did not asked for loggout an no login is already processing
+							log.Printf("got to log in, token expired...")
 							go func() {
 								sm.SetDisabled("LOGIN", true)
 								doLogin()
+								sm.SetDisabled("LOGIN", false)
 							}()
+						} else {
+							log.Printf("don't have to log in : loginIsProcessing[%t] manualLogout[%d]", loginIsProcessing, manualLogout)
 						}
 					}
-
 					// if the state is not Running don't do exitNodes Check
 					continue
 				}

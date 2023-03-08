@@ -193,9 +193,10 @@ func forceExitNode(exitNode string) {
 		checkExitNodeConnection(exitNode)
 
 		pmp := new(ipn.MaskedPrefs)
-		pmp.Prefs = *p
-		pmp.ExitNodeIDSet = true
+		pmp.Prefs = *p.Clone()
+		pmp.Prefs.ClearExitNode()
 		pmp.SetExitNodeIP(exitNode, st)
+		pmp.ExitNodeIDSet = true
 		pmp.ExitNodeIPSet = true
 		pmp.ExitNodeAllowLANAccess = true
 		pmp.ExitNodeAllowLANAccessSet = true
@@ -204,7 +205,7 @@ func forceExitNode(exitNode string) {
 		if err != nil {
 			log.Printf("%s", err.Error())
 		}
-		if np.ExitNodeIP.IsValid() {
+		if !np.ExitNodeID.IsZero() {
 			activeExitNode = exitNode
 			nping = 0
 		}

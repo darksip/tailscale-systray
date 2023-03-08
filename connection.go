@@ -61,6 +61,7 @@ func doLogin() {
 	if errlogin != nil {
 		Notify(err.Error(), "error")
 	}
+	loginIsProcessing = false
 	// check for the needs of a needs of an exit node
 	setExitNode()
 	//log.Print(exitNodeParam)
