@@ -44,13 +44,18 @@ func refreshExitNodes() {
 		for _, ps := range status.Peer {
 			if len(ps.TailscaleIPs) != 0 {
 				peerIP := ps.TailscaleIPs[1].String()
-				log.Printf("peer %s (%s): EN: %t ENOption: %t", ps.HostName, peerIP, ps.ExitNode, ps.ExitNodeOption)
+
 				if ps.ExitNodeOption {
 					isa := activeExitNode == peerIP
 					en := ExitNode{
 						Ip:       peerIP,
 						IsActive: isa,
 						Latency:  0.0,
+					}
+					log.Printf("peer %s (%s): EN: %t ENOption: %t  [expired: %t , lastSeen %s,  LastHandshake %s]", ps.HostName, peerIP, ps.ExitNode, ps.ExitNodeOption, ps.Expired, ps.LastSeen.String(), ps.LastHandshake.String())
+					if time.Since(ps.LastSeen) > 4*time.Hour {
+						log.Printf("--> expired ")
+						continue
 					}
 					exitNodes = append(exitNodes, en)
 					//exitNode = peerIP
@@ -72,8 +77,10 @@ func checkActiveNodeAndSetExitNode() {
 		if nping > npingsCheck {
 			// TODO : demand at least 30% best in latency to change
 			if bestExitNode != activeExitNode {
-				setExitNode()
-				showOrderedExitNode(bestExitNode)
+				if movLatencies[bestExitNode] < 0.7*movLatencies[activeExitNode] {
+					forceExitNode(bestExitNode)
+					showOrderedExitNode(bestExitNode)
+				}
 			}
 		}
 	}
@@ -103,6 +110,7 @@ func removeExitNode() {
 func checkLatency() string {
 	var bestLatency float64 = math.MaxFloat64
 	var bestExitNodeIp string = ""
+	newExitNodes := []ExitNode{}
 	nping++ // nb of ping since laste exitNode change
 	for i := range exitNodes {
 		ip, lat := pingExitNode(&exitNodes[i])
@@ -111,6 +119,7 @@ func checkLatency() string {
 			// don't add a 0.0 to the avg , we would give a bonus to a disfunctional exitNode
 			continue
 		}
+		newExitNodes = append(newExitNodes, exitNodes[i])
 		if len(latencies[ip]) >= 20 {
 			latencies[ip] = append(latencies[ip][1:], lat)
 		} else {
@@ -128,6 +137,7 @@ func checkLatency() string {
 			}
 		}
 	}
+	exitNodes = newExitNodes
 	return bestExitNodeIp
 }
 
