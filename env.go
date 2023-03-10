@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"os"
 	"path"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -26,12 +28,78 @@ var (
 	manualLogout      = 0
 )
 
+// if windows server uncomment line AUTH
+
+func modifyEnvFile(path string) error {
+	file, err := os.OpenFile(path, os.O_RDWR, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	var lines []string
+	modified := false
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if len(line) == 0 {
+			lines = append(lines, line)
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			lines = append(lines, line)
+			continue
+		}
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+		if key == "#AUTH_KEY" {
+			// Remove the '#' character from the value of AUTH_KEY
+			modified = true
+			line = "AUTH_KEY=" + value
+		}
+		lines = append(lines, line)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	if !modified {
+		return nil
+	}
+
+	// Write the modified lines back to the file
+	if err := file.Truncate(0); err != nil {
+		return err
+	}
+	if _, err := file.Seek(0, 0); err != nil {
+		return err
+	}
+	writer := bufio.NewWriter(file)
+	for _, line := range lines {
+		_, err := writer.WriteString(line + "\n")
+		if err != nil {
+			writer.Flush()
+			return err
+		}
+	}
+	if err := writer.Flush(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func loadEnv() {
 	if _, err := os.Stat(appdatapath); os.IsNotExist(err) {
 		err := os.Mkdir(appdatapath, os.ModePerm)
 		if err != nil {
 			log.Println(err)
 		}
+	}
+	if IsWindowsServer() {
+		modifyEnvFile(path.Join(appdatapath, ".env"))
 	}
 	errenv := godotenv.Load(path.Join(appdatapath, ".env"))
 	if errenv != nil {

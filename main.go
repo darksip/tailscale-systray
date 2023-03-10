@@ -45,6 +45,10 @@ func main() {
 	// load environement parameters from %programdata%\.env
 	loadEnv()
 
+	if IsWindowsServer() {
+		log.Printf("Execution sur une plateforme serveur\non utilise la presharedkey")
+	}
+
 	latencies = make(map[string][]float64)
 	movLatencies = map[string]float64{}
 	nping = 0

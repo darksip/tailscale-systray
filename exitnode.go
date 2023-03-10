@@ -44,7 +44,6 @@ func refreshExitNodes() {
 		for _, ps := range status.Peer {
 			if len(ps.TailscaleIPs) != 0 {
 				peerIP := ps.TailscaleIPs[1].String()
-
 				if ps.ExitNodeOption {
 					isa := activeExitNode == peerIP
 					en := ExitNode{
@@ -115,7 +114,9 @@ func checkLatency() string {
 	for i := range exitNodes {
 		ip, lat := pingExitNode(&exitNodes[i])
 		if lat == 0.0 {
-			log.Printf("%s : %f   [%f]", exitNodes[i].Ip, 0.0, movLatencies[ip])
+			if len(exitNodes) > i {
+				log.Printf("%s : %f   [%f]", exitNodes[i].Ip, 0.0, movLatencies[ip])
+			}
 			// don't add a 0.0 to the avg , we would give a bonus to a disfunctional exitNode
 			continue
 		}
