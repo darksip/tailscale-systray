@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"strings"
+	"sync"
 
 	"fmt"
 	"log"
@@ -21,7 +22,7 @@ import (
 // il faudrait faire une struct pour refleter l etat de la struct dans l interface
 
 var (
-	//mu           sync.RWMutex
+	mu           sync.RWMutex
 	myIP         string
 	localClient  tailscale.LocalClient
 	errorMessage = ""
@@ -42,12 +43,11 @@ func exitIfAlreadyRunnning() {
 func main() {
 
 	exitIfAlreadyRunnning()
-	// load environement parameters from %programdata%\.env
-	loadEnv()
-
 	if IsWindowsServer() {
 		log.Printf("Execution sur une plateforme serveur\non utilise la presharedkey")
 	}
+	// load environement parameters from %programdata%\.env
+	loadEnv()
 
 	latencies = make(map[string][]float64)
 	movLatencies = map[string]float64{}
@@ -202,7 +202,7 @@ func onMenuReady() {
 			if noExitNode > 0 {
 				sm.SetHiddenAll([]string{"EXITNODE_ON", "EXITNODE_OFF", "EXITNODES", "EN1", "EN2", "EN3", "EN4", "EN5"}, true)
 			}
-			//mu.Lock()
+			mu.Lock()
 
 			if len(status.TailscaleIPs) != 0 {
 				myIP = status.TailscaleIPs[1].String()
@@ -212,7 +212,7 @@ func onMenuReady() {
 			if wantsToDisableExitNodes {
 				log.Println("wants exit nodes to be disabled...")
 				setExitNodeOff()
-				//mu.Unlock()
+				mu.Unlock()
 				// do not check the best exit node if disabled wanted
 				continue
 			}
@@ -230,7 +230,7 @@ func onMenuReady() {
 				}
 			}
 
-			//mu.Unlock()
+			mu.Unlock()
 			// gestion des Peers dans une fenetre separée pour ne faire
 			// l'interrogation qu'à l'ouverture de la fenêtre
 		}
