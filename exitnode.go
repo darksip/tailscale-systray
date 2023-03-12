@@ -112,6 +112,10 @@ func checkLatency() string {
 	newExitNodes := []ExitNode{}
 	nping++ // nb of ping since laste exitNode change
 	for i := range exitNodes {
+		if len(exitNodes) <= i {
+			log.Printf("error in exitNodes !!!!")
+			return ""
+		}
 		ip, lat := pingExitNode(&exitNodes[i])
 		if lat == 0.0 {
 			if len(exitNodes) > i {

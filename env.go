@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path"
 	"strconv"
 	"strings"
 
@@ -19,7 +18,8 @@ var (
 	adminUrl          = rootUrl + "/web"
 	appName           = "CyberVpn"
 	adminMode         = "off"
-	appdatapath       = fmt.Sprintf("%s\\%s", os.Getenv("ProgramData"), appName)
+	programdatapath   = fmt.Sprintf("%s\\%s", os.Getenv("ProgramData"), appName)
+	appdatapath       = fmt.Sprintf("%s\\%s", os.Getenv("AppData"), appName)
 	excludeCirds      = ""
 	npingsCheck       = 100
 	authKey           = ""
@@ -28,18 +28,24 @@ var (
 	manualLogout      = 0
 )
 
-// if windows server uncomment line AUTH
+/*
+On windows server, we can have problem to get write access to program data
+so we change the process to make a copy in appdata_roaming to make the .env
+writeable for the process
+*/
 
-func modifyEnvFile(path string) error {
-	file, err := os.OpenFile(path, os.O_RDWR, 0644)
+// if windows server uncomment line AUTH
+func modifyEnvFile(modify bool, path string, pathout string) error {
+	file, err := os.OpenFile(path, os.O_RDONLY, 0644)
 	if err != nil {
+		log.Printf(err.Error())
 		return err
 	}
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 	var lines []string
-	modified := false
+	//modified := false
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if len(line) == 0 {
@@ -53,10 +59,11 @@ func modifyEnvFile(path string) error {
 		}
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
-		if key == "#AUTH_KEY" {
+		if modify && (key == "#AUTH_KEY") {
 			// Remove the '#' character from the value of AUTH_KEY
-			modified = true
+			//modified = true
 			line = "AUTH_KEY=" + value
+			log.Printf("modification AUTH_KEY")
 		}
 		lines = append(lines, line)
 	}
@@ -64,47 +71,51 @@ func modifyEnvFile(path string) error {
 	if err := scanner.Err(); err != nil {
 		return err
 	}
-
-	if !modified {
-		return nil
-	}
-
+	log.Printf("ecriture du fichier")
 	// Write the modified lines back to the file
-	if err := file.Truncate(0); err != nil {
-		return err
-	}
-	if _, err := file.Seek(0, 0); err != nil {
-		return err
-	}
-	writer := bufio.NewWriter(file)
-	for _, line := range lines {
-		_, err := writer.WriteString(line + "\n")
-		if err != nil {
-			writer.Flush()
-			return err
+	f, ferr := os.Create(pathout)
+	if ferr == nil {
+		for _, line := range lines {
+			f.WriteString(line + "\n")
 		}
+	} else {
+		log.Printf(err.Error())
 	}
-	if err := writer.Flush(); err != nil {
-		return err
-	}
+	f.Close()
 
 	return nil
 }
 
 func loadEnv() {
-	if _, err := os.Stat(appdatapath); os.IsNotExist(err) {
-		err := os.Mkdir(appdatapath, os.ModePerm)
+	if _, err := os.Stat(programdatapath); os.IsNotExist(err) {
+		err := os.Mkdir(programdatapath, os.ModePerm)
 		if err != nil {
 			log.Println(err)
 		}
 	}
-	if IsWindowsServer() {
-		modifyEnvFile(path.Join(appdatapath, ".env"))
+	if _, err := os.Stat(appdatapath); os.IsNotExist(err) {
+		err := os.Mkdir(appdatapath, 0766)
+		if err != nil {
+			log.Println(err)
+		}
 	}
-	errenv := godotenv.Load(path.Join(appdatapath, ".env"))
+	pdenv := programdatapath + "\\.env"
+	adenv := appdatapath + "\\.env"
+	log.Printf("chargement des parametres")
+	if _, err := os.Stat(adenv); os.IsNotExist(err) {
+		if IsWindowsServer() {
+			log.Printf("modification du .env pour preshared key")
+			modifyEnvFile(true, pdenv, adenv)
+		} else {
+			modifyEnvFile(false, pdenv, adenv)
+			log.Printf("copie du .env")
+		}
+	}
+
+	errenv := godotenv.Load(adenv)
 	if errenv != nil {
 		log.Printf(".env file not found - create default values")
-		f, ferr := os.Create(path.Join(appdatapath, ".env"))
+		f, ferr := os.Create(adenv)
 		if ferr == nil {
 			f.WriteString("CLIENTID=\n")
 			f.WriteString("BROWSER_METHOD=RUNDLL\n")
