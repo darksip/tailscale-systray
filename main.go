@@ -47,7 +47,7 @@ func main() {
 		log.Printf("Execution sur une plateforme serveur\non utilise la presharedkey")
 	}
 	// load environement parameters from %programdata%\.env
-	loadEnv()
+	loadEnv(false)
 
 	latencies = make(map[string][]float64)
 	movLatencies = map[string]float64{}
@@ -209,7 +209,7 @@ func onMenuReady() {
 				log.Printf("my ip: %s", myIP)
 				sm.SetLabel("MYIP", myIP)
 			}
-			if wantsToDisableExitNodes {
+			if wantsToDisableExitNodes || (noExitNode > 0) {
 				log.Println("wants exit nodes to be disabled...")
 				setExitNodeOff()
 				mu.Unlock()

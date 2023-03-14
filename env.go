@@ -46,6 +46,7 @@ func modifyEnvFile(modify bool, path string, pathout string) error {
 	scanner := bufio.NewScanner(file)
 	var lines []string
 	//modified := false
+	found_noexit := false
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if len(line) == 0 {
@@ -59,15 +60,27 @@ func modifyEnvFile(modify bool, path string, pathout string) error {
 		}
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
+		if key == "NO_EXIT_NODE" {
+			found_noexit = true
+		}
 		if modify && (key == "#AUTH_KEY") {
 			// Remove the '#' character from the value of AUTH_KEY
 			//modified = true
 			line = "AUTH_KEY=" + value
 			log.Printf("modification AUTH_KEY")
 		}
+		if modify && (key == "#NO_EXIT_NODE") {
+			// Remove the '#' character from the value of AUTH_KEY
+			//modified = true
+			line = "NO_EXIT_NODE=1"
+			log.Printf("modification NO_EXIT_NODE")
+			found_noexit = true
+		}
 		lines = append(lines, line)
 	}
-
+	if !found_noexit && modify {
+		lines = append(lines, "NO_EXIT_NODE=1")
+	}
 	if err := scanner.Err(); err != nil {
 		return err
 	}
@@ -86,7 +99,7 @@ func modifyEnvFile(modify bool, path string, pathout string) error {
 	return nil
 }
 
-func loadEnv() {
+func loadEnv(forceServer bool) {
 	if _, err := os.Stat(programdatapath); os.IsNotExist(err) {
 		err := os.Mkdir(programdatapath, os.ModePerm)
 		if err != nil {

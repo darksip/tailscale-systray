@@ -63,7 +63,7 @@ func doLogin() {
 	}
 	loginIsProcessing = false
 	// check for the needs of a needs of an exit node
-	setExitNode()
+	//setExitNode()
 	//log.Print(exitNodeParam)
 }
 

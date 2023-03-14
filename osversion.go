@@ -15,6 +15,9 @@ const (
 func IsWindowsServer() bool {
 	osName := runtime.GOOS
 	// Determine if running on a Windows Server
+	if osName != "windows" {
+		return false
+	}
 	isWindowsServer := false
 	if osName == "windows" {
 
