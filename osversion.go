@@ -12,6 +12,11 @@ const (
 	VER_NT_SERVER      = 3
 )
 
+func IsMacOs() bool {
+	osName := runtime.GOOS
+	return osName == "darwin"
+}
+
 func IsWindowsServer() bool {
 	osName := runtime.GOOS
 	// Determine if running on a Windows Server

@@ -48,6 +48,7 @@ func addIconFromDll(key string, index int) {
 	}
 }
 
+// we can refer to Program data directly as we know walk is on ly on Windows
 func initIconsWalk() {
 
 	iconsWalk = map[string]*walk.Icon{}

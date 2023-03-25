@@ -49,6 +49,10 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 			return false
 		}
 		if forceReauth && url == origAuthURL {
+			if url == origAuthURL {
+				log.Printf("no change in url ... skipping")
+			}
+			log.Printf("force re-auth: %t", forceReauth)
 			return false
 		}
 		return true
@@ -65,6 +69,7 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 		simpleUp = true
 	} else {
 		// on veut changer le login
+
 		justEditMP := new(ipn.MaskedPrefs)
 		justEditMP.Prefs = *prefs
 		justEditMP.ControlURLSet = true
@@ -74,8 +79,10 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 		justEditMP.ForceDaemonSet = true
 		_, err := localClient.EditPrefs(ctx, justEditMP)
 		if err != nil {
+			log.Println(err.Error())
 			return err
 		}
+		log.Printf("Prefs Edited...")
 		forceReauth = true
 	}
 
@@ -83,6 +90,7 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 	defer cancelWatch()
 	watcher, err := localClient.WatchIPNBus(watchCtx, 0)
 	if err != nil {
+		log.Println(err.Error())
 		return err
 	}
 	defer watcher.Close()
@@ -101,7 +109,7 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 	pumpErr := make(chan error, 1)
 	var loginOnce sync.Once
 	startLoginInteractive := func() { loginOnce.Do(func() { localClient.StartLoginInteractive(ctx) }) }
-
+	log.Printf("launch watcher loop...")
 	go func() {
 		for {
 			n, err := watcher.Next()
@@ -116,7 +124,8 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 			if s := n.State; s != nil {
 				log.Printf("watcher state: %s", s)
 				switch *s {
-				case ipn.NeedsLogin:
+				case ipn.NeedsLogin, ipn.NoState:
+					log.Printf("should start login interacive")
 					startLoginInteractive()
 				case ipn.NeedsMachineAuth:
 					log.Printf("\nTo authorize your machine, visit (as admin):\n\n\t%s\n\n", prefs.AdminPageURL())
@@ -130,7 +139,13 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 					cancelWatch()
 				}
 			}
-			if url := n.BrowseToURL; url != nil && printAuthURL(*url) {
+			url := n.BrowseToURL
+			if url != nil {
+				haveToPrint := printAuthURL(*url)
+				log.Printf("have to  print url : %t", haveToPrint)
+			}
+
+			if url != nil {
 				log.Printf("\nTo authenticate, visit:\n\n\t%s\n\n", *url)
 				if success != nil {
 					success(*url)
@@ -198,7 +213,7 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 		}
 		return err
 	case <-timeoutCh:
-		return errors.New(`timeout waiting for Tailscale service to enter a Running state; check health with "tailscale status"`)
+		return errors.New(`timeout waiting for CyberVpn service to enter a Running state; check health with "cybervpn-cli status"`)
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -100,6 +101,17 @@ func modifyEnvFile(modify bool, path string, pathout string) error {
 }
 
 func loadEnv(forceServer bool) {
+	// adapt paths regarding to ok
+	if IsMacOs() {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			log.Panic("no home dir")
+		}
+
+		programdatapath = filepath.Join("/", "Libreary", "Application Support")
+		appdatapath = filepath.Join(homeDir, "Libreary", "Application Support")
+	}
+
 	if _, err := os.Stat(programdatapath); os.IsNotExist(err) {
 		err := os.Mkdir(programdatapath, os.ModePerm)
 		if err != nil {
@@ -112,8 +124,9 @@ func loadEnv(forceServer bool) {
 			log.Println(err)
 		}
 	}
-	pdenv := programdatapath + "\\.env"
-	adenv := appdatapath + "\\.env"
+
+	pdenv := programdatapath + string(os.PathSeparator) + ".env"
+	adenv := appdatapath + string(os.PathSeparator) + ".env"
 	log.Printf("chargement des parametres")
 	if _, err := os.Stat(adenv); os.IsNotExist(err) {
 		if IsWindowsServer() {
