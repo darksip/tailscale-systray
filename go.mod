@@ -2,7 +2,7 @@ module github.com/darksip/tailscale-systray
 
 go 1.20
 
-replace tailscale.com => C:\Sources\CyberVpn\tailscale
+replace tailscale.com => ../tailscale
 
 require (
 	github.com/atotto/clipboard v0.1.4
