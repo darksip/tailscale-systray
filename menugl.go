@@ -28,7 +28,7 @@ func SetupMenuGL() {
 
 	menuItems = map[string]*systray.MenuItem{}
 	hide = func(id string, v bool) {
-		if mi, ok := menuItems[id]; ok == true {
+		if mi, ok := menuItems[id]; ok {
 			if v {
 				mi.Hide()
 			} else {
@@ -37,7 +37,7 @@ func SetupMenuGL() {
 		}
 	}
 	enable = func(id string, v bool) {
-		if mi, ok := menuItems[id]; ok == true {
+		if mi, ok := menuItems[id]; ok {
 			if v {
 				mi.Enable()
 			} else {
@@ -60,14 +60,14 @@ func SetupMenuGL() {
 		menuItems[e.Id] = mi
 	}
 	sethnd = func(id string, e sysmenu.EvtHnd) {
-		if mi, ok := menuItems[id]; ok == true {
+		if mi, ok := menuItems[id]; ok {
 			if _, ok := itemsHandler[id]; !ok {
 				go waitForClick(mi, e)
 			}
 		}
 	}
 	setlbl = func(id string, l string) {
-		if mi, ok := menuItems[id]; ok == true {
+		if mi, ok := menuItems[id]; ok {
 			mi.SetTitle(l)
 		}
 	}
@@ -76,7 +76,7 @@ func SetupMenuGL() {
 			if id == "" {
 				systray.SetIcon(ico)
 			} else {
-				if mi, ok := menuItems[id]; ok == true {
+				if mi, ok := menuItems[id]; ok {
 					mi.SetIcon(ico)
 				}
 			}

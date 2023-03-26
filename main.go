@@ -55,13 +55,14 @@ func main() {
 
 	iconOn = iconOnIco
 	iconOff = iconOffIco
-	RunWalk()
+	//RunWalk()
 	// run getlantern systray
-	//RunGl()
+	RunGl()
 }
 
 func Notify(message string, iconame string) {
-	NotifyWalk(message, iconame)
+	//NotifyWalk(message, iconame)
+	NotifyGL(message)
 }
 
 func addMenuHandlers() {

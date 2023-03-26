@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
-	"syscall"
 )
 
 // mettre le root Url dans un .env
@@ -25,12 +24,7 @@ func openBrowser(url string) error {
 		err = exec.Command("xdg-open", url).Start()
 	case "windows":
 		var cmd *exec.Cmd
-		if browserMethod != "CMD" {
-			cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
-		} else {
-			cmd = exec.Command("cmd", "/c", "start", url)
-			cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		}
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
 		err = cmd.Start()
 	case "darwin":
 		err = exec.Command("open", url).Start()
@@ -52,10 +46,6 @@ func execCommand(command string, verb ...string) ([]byte, error) {
 	switch runtime.GOOS {
 	case "darwin":
 		return exec.Command(command, verb...).CombinedOutput()
-	case "windows":
-		cmd := exec.Command(command, verb...)
-		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		return cmd.CombinedOutput()
 	case "linux":
 		allverbs := append([]string{command}, verb...)
 		return exec.Command("pkexec", allverbs...).CombinedOutput()
