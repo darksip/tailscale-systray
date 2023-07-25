@@ -176,3 +176,28 @@ func loadEnv(forceServer bool) {
 		}
 	}
 }
+
+func parseVersion(versionString string) (int, int, int, error) {
+	parts := strings.Split(versionString, ".")
+
+	if len(parts) != 3 {
+		return 0, 0, 0, fmt.Errorf("invalid version format: %s", versionString)
+	}
+
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("failed to parse major version: %s", err)
+	}
+
+	minor, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("failed to parse minor version: %s", err)
+	}
+
+	patch, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("failed to parse patch version: %s", err)
+	}
+
+	return major, minor, patch, nil
+}

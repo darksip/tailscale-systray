@@ -26,6 +26,7 @@ var (
 	myIP         string
 	localClient  tailscale.LocalClient
 	errorMessage = ""
+	myVersion    = "1.20.1"
 )
 
 // tailscale local client to use for IPN
@@ -127,6 +128,7 @@ func setMenuState(status *ipnstate.Status) (exit bool) {
 	return false
 }
 
+// fonction appelee des que le menu est pret
 func onMenuReady() {
 
 	log.Printf("getting localClient...")
@@ -152,6 +154,26 @@ func onMenuReady() {
 		log.Println("The service CyberVpn does not respond")
 	}
 
+	// launch monitor and auto-update loop
+	go func() {
+		for {
+			time.Sleep(300 * time.Second)
+			// call monitoring function to report status
+
+			// if not already waiting for install check for newer version
+			status, err := checkAndDownload()
+			if err != nil {
+				log.Printf("status: %s", status)
+				// si up to date -> on passe
+				// si successful download ->
+				// 			on notifie l' update disponible en enregistrant
+				//			l' info de notif pour ne pas spammer
+				// si already downloaded -> on rends visible le menu update
+			}
+			// else check if we have to notify or add to menu
+
+		}
+	}()
 	// base deamon looping forever
 	go func() {
 		for {
@@ -173,6 +195,8 @@ func onMenuReady() {
 				errorMessage = ""
 
 				sm.SetHidden("SHOW_ERROR", true)
+				sm.SetHidden("UPDATE", false)
+				sm.SetIcon("UPDATE", "caution")
 				sm.SetLabel("STATUS", status.BackendState)
 				sm.SetIcon("CYBERVPN", "off16")
 				if setMenuState(status) {

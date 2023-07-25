@@ -14,6 +14,7 @@ require (
 
 require (
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e // indirect
+	golang.org/x/text v0.7.0 // indirect
 	gopkg.in/Knetic/govaluate.v3 v3.0.0 // indirect
 )
 
@@ -58,7 +59,7 @@ require (
 	golang.org/x/mod v0.7.0 // indirect
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.5.0
+	golang.org/x/sys v0.5.1-0.20230222185716-a3b23cc77e89
 	golang.org/x/tools v0.5.0 // indirect
 	golang.zx2c4.com/wireguard/windows v0.5.3 // indirect
 )

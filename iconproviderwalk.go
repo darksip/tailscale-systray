@@ -63,6 +63,7 @@ func initIconsWalk() {
 	addIconFromFile("on", "on")
 	addIconFromFile("off", "off")
 	addIconFromFile("off16", "off")
+	addIconFromFile("caution", "caution")
 	addIconFromFile("blueballoon", "bluebaloon")
 	addIconFromFile("redballoon", "redbaloon")
 	addIconFromFile("greyballoon", "greybaloon")
