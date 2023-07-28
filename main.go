@@ -26,7 +26,7 @@ var (
 	myIP         string
 	localClient  tailscale.LocalClient
 	errorMessage = ""
-	myVersion    = "1.20.1"
+	myVersion    = "1.20.4"
 )
 
 // tailscale local client to use for IPN
@@ -156,22 +156,66 @@ func onMenuReady() {
 
 	// launch monitor and auto-update loop
 	go func() {
+		lastUpdateNotification := time.Now().AddDate(0, 0, -2)
+		launchMsi := ""
+
+		sm.SetDisabled("UPDATE", false)
+		sm.SetHidden("UPDATE", true)
+		sm.SetIcon("UPDATE", "caution")
 		for {
-			time.Sleep(300 * time.Second)
+			log.Printf("local client version: %s", myVersion)
 			// call monitoring function to report status
 
 			// if not already waiting for install check for newer version
-			status, err := checkAndDownload()
-			if err != nil {
+			status, newVersionPath, err := checkAndDownload()
+			if err == nil {
 				log.Printf("status: %s", status)
 				// si up to date -> on passe
-				// si successful download ->
-				// 			on notifie l' update disponible en enregistrant
-				//			l' info de notif pour ne pas spammer
-				// si already downloaded -> on rends visible le menu update
+				if status == "up to date" {
+					sm.SetHidden("UPDATE", false)
+					continue
+				} else if status == "successful download" {
+					Notify(fmt.Sprintf("Une  mise à jour du logciel est disponible.\nCliquez droit sur l'icone du systray et choisissez\nMise a jour"), "caution")
+					launchMsi = newVersionPath
+					lastUpdateNotification = time.Now()
+					sm.SetHidden("UPDATE", false)
+					sm.SetHandler("UPDATE", func() {
+						log.Printf("launch %s ...", launchMsi)
+
+						_, err := execCommand("msiexec", "/i", launchMsi)
+						if err == nil {
+							os.Exit(0)
+						} else {
+							errorMessage = err.Error()
+							sm.SetHidden("SHOW_ERROR", false)
+							sm.SetDisabled("SHOW_ERROR", false)
+						}
+					})
+				} else if status == "already downloaded" {
+					if time.Since(lastUpdateNotification).Hours() >= 24 {
+						Notify(fmt.Sprintf("Une  mise à jour du logciel est disponible.\nCliquez droit sur l'icone du systray et choisissez\nMise a jour"), "caution")
+						lastUpdateNotification = time.Now()
+						launchMsi = newVersionPath
+						sm.SetHandler("UPDATE", func() {
+							log.Printf("launch %s ...", launchMsi)
+							_, err := execCommand("msiexec", "/i", launchMsi)
+							if err == nil {
+								os.Exit(0)
+							} else {
+								errorMessage = err.Error()
+								sm.SetHidden("SHOW_ERROR", false)
+								sm.SetDisabled("SHOW_ERROR", false)
+							}
+						})
+					}
+					sm.SetHidden("UPDATE", false)
+
+				} else {
+					log.Printf("status innatendu: %s", status)
+				}
 			}
 			// else check if we have to notify or add to menu
-
+			time.Sleep(15 * time.Second)
 		}
 	}()
 	// base deamon looping forever
@@ -195,8 +239,6 @@ func onMenuReady() {
 				errorMessage = ""
 
 				sm.SetHidden("SHOW_ERROR", true)
-				sm.SetHidden("UPDATE", false)
-				sm.SetIcon("UPDATE", "caution")
 				sm.SetLabel("STATUS", status.BackendState)
 				sm.SetIcon("CYBERVPN", "off16")
 				if setMenuState(status) {

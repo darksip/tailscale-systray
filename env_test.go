@@ -61,12 +61,15 @@ func TestDownloadVersion(t *testing.T) {
 }
 
 func TestCheckAndDownload(t *testing.T) {
-	status, err := checkAndDownload()
+	status, fname, err := checkAndDownload()
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 	log.Printf("status : %s", status)
 	if len(status) < 4 {
 		t.Fatalf("status should be longer")
+	}
+	if len(fname) < 4 {
+		t.Fatalf("filename should be longer")
 	}
 }

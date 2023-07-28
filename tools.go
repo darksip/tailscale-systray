@@ -63,3 +63,9 @@ func execCommand(command string, verb ...string) ([]byte, error) {
 		return exec.Command(command, verb...).CombinedOutput()
 	}
 }
+
+func execNewGroupCommand(command string, verb ...string) ([]byte, error) {
+	cmd := exec.Command(command, verb...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP}
+	return cmd.CombinedOutput()
+}

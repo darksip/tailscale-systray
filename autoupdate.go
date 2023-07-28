@@ -58,27 +58,27 @@ func checkVersion(maj int, min int, patch int) (string, bool, error) {
 	return remote, false, nil
 }
 
-func checkAndDownload() (string, error) {
+func checkAndDownload() (string, string, error) {
 	m, mi, p, err := parseVersion(myVersion)
 	if err != nil {
-		return "bad version", err
+		return "bad version", "", err
 	}
 	remote, update, err := checkVersion(m, mi, p)
 	if err != nil {
-		return "remote check failed", err
+		return "remote check failed", "", err
 	}
 	if !update {
-		return "up to date", nil
+		return "up to date", "", nil
 	}
 	name := fmt.Sprintf("cybervpn.%s.msi", remote)
 	targetFilePath := filepath.Join(appdatapath, name)
 	if _, err := os.Stat(targetFilePath); err == nil {
-		return "already downloaded", nil
+		return "already downloaded", targetFilePath, nil
 	} else if os.IsNotExist(err) {
 		status, err := downloadVersion(remote)
-		return status, err
+		return status, targetFilePath, err
 	} else {
-		return "existence verification error", err
+		return "existence verification error", "", err
 	}
 }
 
