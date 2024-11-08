@@ -5,16 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/netip"
 	"os"
 	"os/signal"
-	"runtime"
 	"sync"
 	"syscall"
 	"time"
 
 	"tailscale.com/ipn"
-	"tailscale.com/ipn/ipnstate"
 )
 
 type SuccessCallback func(url string)
@@ -217,36 +214,36 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 	}
 }
 
-func effectiveGOOS() string {
-	if v := os.Getenv("TS_DEBUG_UP_FLAG_GOOS"); v != "" {
-		return v
-	}
-	return runtime.GOOS
-}
+// func effectiveGOOS() string {
+// 	if v := os.Getenv("TS_DEBUG_UP_FLAG_GOOS"); v != "" {
+// 		return v
+// 	}
+// 	return runtime.GOOS
+// }
 
-// exitNodeIP returns the exit node IP from p, using st to map
-// it from its ID form to an IP address if needed.
-func exitNodeIP(p *ipn.Prefs, st *ipnstate.Status) (ip netip.Addr) {
-	if p == nil {
-		return
-	}
-	if p.ExitNodeIP.IsValid() {
-		return p.ExitNodeIP
-	}
-	id := p.ExitNodeID
-	if id.IsZero() {
-		return
-	}
-	for _, p := range st.Peer {
-		if p.ID == id {
-			if len(p.TailscaleIPs) > 0 {
-				return p.TailscaleIPs[0]
-			}
-			break
-		}
-	}
-	return
-}
+// // exitNodeIP returns the exit node IP from p, using st to map
+// // it from its ID form to an IP address if needed.
+// func exitNodeIP(p *ipn.Prefs, st *ipnstate.Status) (ip netip.Addr) {
+// 	if p == nil {
+// 		return
+// 	}
+// 	if p.ExitNodeIP.IsValid() {
+// 		return p.ExitNodeIP
+// 	}
+// 	id := p.ExitNodeID
+// 	if id.IsZero() {
+// 		return
+// 	}
+// 	for _, p := range st.Peer {
+// 		if p.ID == id {
+// 			if len(p.TailscaleIPs) > 0 {
+// 				return p.TailscaleIPs[0]
+// 			}
+// 			break
+// 		}
+// 	}
+// 	return
+// }
 
 func runDown(ctx context.Context) error {
 

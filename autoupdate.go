@@ -40,22 +40,19 @@ func fetchContent(url string) (string, error) {
 	return versionResp.Version, nil
 }
 
-func checkVersion(maj int, min int, patch int) (string, bool, error) {
+func checkVersion(maj, min, patch int) (string, bool, error) {
 	remote, err := fetchContent(versionurl)
 	if err != nil {
 		return "", false, err
 	}
 	rmaj, rmin, rpatch, err := parseVersion(remote)
-	if maj < rmaj {
-		return remote, true, nil
+	if err != nil {
+		return "", false, err
 	}
-	if min < rmin {
-		return remote, true, nil
-	}
-	if patch < rpatch {
-		return remote, true, nil
-	}
-	return remote, false, nil
+
+	// Vérifie si une mise à jour est nécessaire
+	needsUpdate := maj < rmaj || (maj == rmaj && min < rmin) || (maj == rmaj && min == rmin && patch < rpatch)
+	return remote, needsUpdate, nil
 }
 
 func checkAndDownload() (string, string, error) {
