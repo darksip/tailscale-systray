@@ -14,10 +14,10 @@ var (
 	loginIsProcessing = false
 )
 
-func getBackenState() string {
-	st, _ := localClient.Status(context.TODO())
-	return st.BackendState
-}
+// func getBackenState() string {
+// 	st, _ := localClient.Status(context.TODO())
+// 	return st.BackendState
+// }
 
 func disconnectReconnect() {
 	doDisconnect()
@@ -143,10 +143,6 @@ func doConnect() {
 		runUp(context.TODO(), "up", pref, false, "",
 			0, success, failure)
 	}
-}
-
-func doDeactivateExitNode() {
-
 }
 
 func AddConnectionHandlersToMenu() {

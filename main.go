@@ -38,60 +38,80 @@ var (
 
 // tailscale local client to use for IPN
 
-func exitIfAlreadyRunnning() {
+// exitIfAlreadyRunning vérifie si le programme est déjà en cours d'exécution et quitte s'il l'est.
+func exitIfAlreadyRunning() {
 	addr := "localhost:25169"
 	l, err := net.Listen("tcp", addr)
 
 	if err != nil {
-		log.Print("Program is already running.")
+		log.Print("Le programme est déjà en cours d'exécution.")
 		os.Exit(1)
 	}
-	l.Close()
-	// keep listening indefinitely to block the port
+	defer l.Close() // Ferme le listener quand la fonction est terminée.
+
+	// Garder l'écoute indéfiniment pour bloquer le port.
 	go func() {
-		l, err := net.Listen("tcp", addr)
-		defer l.Close()
-		if err == nil {
+		for {
+			// Essayez de réécouter sur le même port, s'il y a une erreur, loggez-la.
+			l, err := net.Listen("tcp", addr)
+			if err != nil {
+				log.Printf("Erreur lors de l'écoute sur %s : %s", addr, err)
+				return
+			}
+			defer l.Close()
 			for {
 				time.Sleep(3 * time.Second)
 			}
 		}
 	}()
-	//
 }
 
-// Copie le fichier .env dans le dossier de l'application
+// copyEnvFile copie un fichier d'environnement vers le répertoire spécifié.
 func copyEnvFile(path string) error {
-
+	// Vérifie si le répertoire cible existe, sinon le crée.
 	if _, err := os.Stat(pskDir); os.IsNotExist(err) {
 		err = os.MkdirAll(pskDir, 0755)
 		if err != nil {
-			return err
+			return err // Retourne une erreur si la création échoue.
 		}
 	}
 
+	// Construit le chemin de sortie à partir du nom de base du fichier source.
 	bname := filepath.Base(path)
 	pathOut := filepath.Join(pskDir, bname)
+
+	// Ouvre le fichier source en lecture seule.
 	src, err := os.Open(path)
-	defer src.Close()
 	if err != nil {
-		return err
+		return err // Retourne une erreur si l'ouverture échoue.
 	}
+	defer func() {
+		if cerr := src.Close(); cerr != nil {
+			log.Printf("Erreur lors de la fermeture du fichier source: %s", cerr)
+		}
+	}()
 
+	// Crée le fichier de destination en écriture.
 	dst, err := os.Create(pathOut)
-	defer dst.Close()
 	if err != nil {
-		return err
+		return err // Retourne une erreur si la création échoue.
 	}
-	log.Printf("copie du fichier %s", path)
+	defer func() {
+		if cerr := dst.Close(); cerr != nil {
+			log.Printf("Erreur lors de la fermeture du fichier destination: %s", cerr)
+		}
+	}()
 
+	log.Printf("Copie du fichier %s vers %s", path, pathOut)
+
+	// Copie le contenu du fichier source vers le fichier de destination.
 	_, err = io.Copy(dst, src)
 	if err != nil {
-		log.Println(err.Error())
+		log.Println("Erreur lors de la copie du fichier:", err)
 		return err
 	}
 
-	return err
+	return nil
 }
 
 func main() {
@@ -116,7 +136,7 @@ func main() {
 		}
 	}
 
-	exitIfAlreadyRunnning()
+	exitIfAlreadyRunning()
 
 	RunWalk()
 	// run getlantern systray
@@ -195,12 +215,12 @@ func setMenuPreSharedKeys() (pskNumber int, err error) {
 					doLogin()
 
 					// loop on presharedKeys keys
-					for name, _ := range presharedKeys {
+					icon := "empty"
+					for name := range presharedKeys {
 						if name == pskName {
-							sm.SetIcon(pskIds[name], "blueballoon")
-						} else {
-							sm.SetIcon(pskIds[name], "empty")
+							icon = "blueballoon"
 						}
+						sm.SetIcon(pskIds[name], icon)
 					}
 
 					Notify(fmt.Sprintf("Connexion effectuée sur %s avec la clé %s", rootUrl, pskName), "info")
@@ -302,7 +322,7 @@ func onMenuReady() {
 			}
 		}
 		if strings.ToLower(st.BackendState) == "stopped" {
-			Notify(fmt.Sprintf("Cyber Vpn is disconnected\nRight Ckick on systray icon\n and choose Connect"), "disconnected")
+			Notify("Cyber Vpn is disconnected\nRight Ckick on systray icon\n and choose Connect", "disconnected")
 			sm.SetDisabled("LOGIN", false)
 		}
 	} else {
@@ -316,6 +336,10 @@ func onMenuReady() {
 	go func() {
 		if _, err := os.Stat(pskDir); os.IsNotExist(err) {
 			err = os.MkdirAll(pskDir, 0755)
+			if err != nil {
+				log.Printf("Erreur lors de la création du répertoire %s : %s", pskDir, err)
+				return
+			}
 		}
 		StartWatch(pskDir, setMenuPreSharedKeys, quit)
 	}()
@@ -342,7 +366,7 @@ func onMenuReady() {
 					time.Sleep(15 * time.Second)
 					continue
 				} else if status == "successful download" {
-					Notify(fmt.Sprintf("Une  mise à jour du logciel est disponible.\nCliquez droit sur l'icone du systray et choisissez\nMise a jour"), "caution")
+					Notify("Une  mise à jour du logciel est disponible.\nCliquez droit sur l'icone du systray et choisissez\nMise a jour", "caution")
 					launchMsi = newVersionPath
 					lastUpdateNotification = time.Now()
 					sm.SetHidden("UPDATE", false)
@@ -360,7 +384,7 @@ func onMenuReady() {
 					})
 				} else if status == "already downloaded" {
 					if time.Since(lastUpdateNotification).Hours() >= 24 {
-						Notify(fmt.Sprintf("Une  mise à jour du logciel est disponible.\nCliquez droit sur l'icone du systray et choisissez\nMise a jour"), "caution")
+						Notify("Une  mise à jour du logciel est disponible.\nCliquez droit sur l'icone du systray et choisissez\nMise a jour", "caution")
 						lastUpdateNotification = time.Now()
 						launchMsi = newVersionPath
 						sm.SetHandler("UPDATE", func() {
