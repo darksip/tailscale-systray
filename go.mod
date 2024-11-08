@@ -6,6 +6,7 @@ replace tailscale.com => ../tailscale
 
 require (
 	github.com/atotto/clipboard v0.1.4
+	github.com/fsnotify/fsnotify v1.5.4
 	github.com/gen2brain/beeep v0.0.0-20220909211152-5a9ec94374f6
 	github.com/getlantern/systray v1.2.1
 	github.com/joho/godotenv v1.5.0

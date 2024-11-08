@@ -10,6 +10,14 @@
             "request": "launch",
             "mode": "auto",
             "program": "${fileDirname}"
+        },
+        {
+            "name": "Launch Package With args",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${fileDirname}",
+            "args": ["C:\\Users\\Pierre\\Documents\\firemo.psk"]
         } 
     ]
 }

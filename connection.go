@@ -2,7 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -62,9 +66,61 @@ func doLogin() {
 		Notify(err.Error(), "error")
 	}
 	loginIsProcessing = false
+	// process succeed so save the authUrl in a file in appdatapath
+	ct := "oAuth"
+	if authKey != "" {
+		ct = "presharedKey"
+	}
+
+	writeAuthUrl(ct)
 	// check for the needs of a needs of an exit node
 	//setExitNode()
 	//log.Print(exitNodeParam)
+}
+
+// Function to write auth url to file after successful login
+
+type ConnectionInfo struct {
+	RootUrl        string `json:"rootUrl"`
+	ConnectionType string `json:"connectionType"`
+}
+
+func writeAuthUrl(connectionType string) {
+	connectionInfo := ConnectionInfo{
+		RootUrl:        rootUrl,
+		ConnectionType: connectionType,
+	}
+
+	data, _ := json.Marshal(connectionInfo)
+
+	authUrlFile := filepath.Join(appdatapath, "authUrl.txt")
+	errW := os.WriteFile(authUrlFile, data, 0644)
+	if errW != nil {
+		log.Printf("Error writing auth url file: %s", errW)
+	}
+}
+
+func readAuthUrl() (ci ConnectionInfo, err error) {
+	var connectionInfo ConnectionInfo
+
+	authUrlFile := filepath.Join(appdatapath, "authUrl.txt")
+	data, err := os.ReadFile(authUrlFile)
+	if err != nil {
+		log.Printf("Error reading auth url file: %s", err)
+		return connectionInfo, err
+	} else {
+		json.Unmarshal(data, &connectionInfo)
+	}
+
+	return connectionInfo, nil
+}
+
+func getClientId(connectionInfo ConnectionInfo) string {
+	urlParts := strings.Split(connectionInfo.RootUrl, ".")
+	if len(urlParts) >= 3 && urlParts[0] == "https://head" {
+		return urlParts[1]
+	}
+	return ""
 }
 
 func doLogout() {

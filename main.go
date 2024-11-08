@@ -4,13 +4,15 @@ package main
 
 import (
 	"context"
-	"strings"
-	"sync"
-
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/atotto/clipboard"
@@ -27,6 +29,11 @@ var (
 	localClient  tailscale.LocalClient
 	errorMessage = ""
 	myVersion    = "1.20.4"
+	// array of string containing pre-shared keys for authentification
+	presharedKeys = map[string]string{}
+	pskIds        = map[string]string{}
+	currentPsk    = ""
+	pskDir        = filepath.Join(appdatapath, "psks")
 )
 
 // tailscale local client to use for IPN
@@ -34,16 +41,61 @@ var (
 func exitIfAlreadyRunnning() {
 	addr := "localhost:25169"
 	l, err := net.Listen("tcp", addr)
+
 	if err != nil {
 		log.Print("Program is already running.")
 		os.Exit(1)
 	}
-	defer l.Close()
+	l.Close()
+	// keep listening indefinitely to block the port
+	go func() {
+		l, err := net.Listen("tcp", addr)
+		defer l.Close()
+		if err == nil {
+			for {
+				time.Sleep(3 * time.Second)
+			}
+		}
+	}()
+	//
+}
+
+// Copie le fichier .env dans le dossier de l'application
+func copyEnvFile(path string) error {
+
+	if _, err := os.Stat(pskDir); os.IsNotExist(err) {
+		err = os.MkdirAll(pskDir, 0755)
+		if err != nil {
+			return err
+		}
+	}
+
+	bname := filepath.Base(path)
+	pathOut := filepath.Join(pskDir, bname)
+	src, err := os.Open(path)
+	defer src.Close()
+	if err != nil {
+		return err
+	}
+
+	dst, err := os.Create(pathOut)
+	defer dst.Close()
+	if err != nil {
+		return err
+	}
+	log.Printf("copie du fichier %s", path)
+
+	_, err = io.Copy(dst, src)
+	if err != nil {
+		log.Println(err.Error())
+		return err
+	}
+
+	return err
 }
 
 func main() {
 
-	exitIfAlreadyRunnning()
 	if IsWindowsServer() {
 		log.Printf("Execution sur une plateforme serveur\non utilise la presharedkey")
 	}
@@ -56,6 +108,16 @@ func main() {
 
 	iconOn = iconOnIco
 	iconOff = iconOffIco
+
+	if len(os.Args) > 1 {
+		err := copyEnvFile(os.Args[1])
+		if err != nil {
+			log.Println(err)
+		}
+	}
+
+	exitIfAlreadyRunnning()
+
 	RunWalk()
 	// run getlantern systray
 	//RunGl()
@@ -63,6 +125,7 @@ func main() {
 
 func Notify(message string, iconame string) {
 	NotifyWalk(message, iconame)
+	//NotifyGL(message)
 }
 
 func addMenuHandlers() {
@@ -89,6 +152,90 @@ func addMenuHandlers() {
 			Notify(fmt.Sprintf("Copy the IP address (%s) to the Clipboard", myIP), "info")
 		}
 	})
+}
+
+func setMenuPreSharedKeys() (pskNumber int, err error) {
+	// si le fichier authUrl.txt dans appdata existe, recupere le ConnectionInfo
+	var cId string
+	ci, err := readAuthUrl()
+	if err == nil {
+		cId = getClientId(ci)
+	}
+	// by default hide all presaredkey entry in menu
+	sm.SetHiddenAll([]string{"PSK1", "PSK2", "PSK3", "PSK4", "PSK5"}, true)
+	// search for preshared key files (*.psk) in appdata folder
+
+	files, err := os.ReadDir(pskDir)
+	if err != nil {
+		log.Printf("Error reading preshared key directory: %s", err)
+		return 0, err
+	} else {
+		idpsk := 1
+		for _, file := range files {
+			if strings.HasSuffix(file.Name(), ".psk") {
+				pskName := strings.TrimSuffix(file.Name(), ".psk")
+				pskId := "PSK" + strconv.Itoa(idpsk)
+				if idpsk > 5 {
+					log.Println("maximum de fichiers psk atteints")
+					break
+				}
+
+				sm.SetHandler(pskId, func() {
+
+					log.Printf("Déconnexion en cours...")
+					if err := localClient.Logout(context.TODO()); err != nil {
+						log.Printf("Erreur lors de la déconnexion: %s", err.Error())
+					}
+
+					rootUrl = fmt.Sprintf("https://head.%s.cyberfile.fr", pskName)
+					authKey = presharedKeys[pskName]
+
+					log.Printf("Login avec la clé prépartagée %s (%s)", pskName, authKey)
+					log.Printf("Sur le domaine %s", rootUrl)
+					doLogin()
+
+					// loop on presharedKeys keys
+					for name, _ := range presharedKeys {
+						if name == pskName {
+							sm.SetIcon(pskIds[name], "blueballoon")
+						} else {
+							sm.SetIcon(pskIds[name], "empty")
+						}
+					}
+
+					Notify(fmt.Sprintf("Connexion effectuée sur %s avec la clé %s", rootUrl, pskName), "info")
+				})
+				sm.SetLabel(pskId, pskName)
+				sm.SetHidden(pskId, false)
+				if pskName == cId {
+					sm.SetIcon(pskId, "blueballoon")
+				} else {
+					sm.SetIcon(pskId, "empty")
+				}
+				pskNumber++
+				//get authkey from content of psk file
+				//open file
+				pskFile, err := os.Open(filepath.Join(pskDir, file.Name()))
+				// read content in authkey variable
+				if err == nil {
+					defer pskFile.Close()
+					authKey, err := io.ReadAll(pskFile)
+					if err != nil {
+						log.Printf("Error reading preshared key file: %s", err)
+						return 0, err
+					} else {
+						// add authkey to map
+						presharedKeys[pskName] = string(authKey)
+						pskIds[pskName] = pskId
+						idpsk++
+					}
+				} else {
+					log.Printf("Error reading preshared key file: %s", err)
+				}
+			}
+		}
+	}
+	return pskNumber, nil
 }
 
 func setMenuState(status *ipnstate.Status) (exit bool) {
@@ -140,11 +287,19 @@ func onMenuReady() {
 	// set default icon to gray logo
 	sm.SetIcon("", "off")
 
+	//TODO: ajouter un retour pour ne pas lancer le login oAuth si psk trouvées
+	pskNb, err := setMenuPreSharedKeys()
+	if err != nil {
+		log.Printf("setMenuPreSharedKeys failed : %s", err.Error())
+	}
+
 	if st != nil {
 		if st.BackendState == "NeedsLogin" || st.BackendState == "NoState" {
-			Notify("Cyber Vpn needs you to login...\nPlease wait while trying to reach the server...", "needslogin")
-			sm.SetDisabled("LOGIN", true)
-			go doLogin()
+			if pskNb == 0 {
+				Notify("Cyber Vpn needs you to login...\nPlease wait while trying to reach the server...", "needslogin")
+				sm.SetDisabled("LOGIN", true)
+				go doLogin()
+			}
 		}
 		if strings.ToLower(st.BackendState) == "stopped" {
 			Notify(fmt.Sprintf("Cyber Vpn is disconnected\nRight Ckick on systray icon\n and choose Connect"), "disconnected")
@@ -153,6 +308,13 @@ func onMenuReady() {
 	} else {
 		log.Println("The service CyberVpn does not respond")
 	}
+
+	go func() {
+		if _, err := os.Stat(pskDir); os.IsNotExist(err) {
+			err = os.MkdirAll(pskDir, 0755)
+		}
+		StartWatch(pskDir, setMenuPreSharedKeys)
+	}()
 
 	// launch monitor and auto-update loop
 	go func() {
@@ -172,7 +334,8 @@ func onMenuReady() {
 				log.Printf("status: %s", status)
 				// si up to date -> on passe
 				if status == "up to date" {
-					sm.SetHidden("UPDATE", false)
+					sm.SetHidden("UPDATE", true)
+					time.Sleep(15 * time.Second)
 					continue
 				} else if status == "successful download" {
 					Notify(fmt.Sprintf("Une  mise à jour du logciel est disponible.\nCliquez droit sur l'icone du systray et choisissez\nMise a jour"), "caution")
@@ -248,16 +411,18 @@ func onMenuReady() {
 					// if the status is NeedsLogin or NoState and manualLogout==0
 					// probably neeeds login after token expiration in sleep mode
 					if status.BackendState == "NeedsLogin" || status.BackendState == "NoState" {
-						if !loginIsProcessing && manualLogout == 0 {
-							// user did not asked for loggout an no login is already processing
-							log.Printf("got to log in, token expired...")
-							go func() {
-								sm.SetDisabled("LOGIN", true)
-								doLogin()
-								sm.SetDisabled("LOGIN", false)
-							}()
-						} else {
-							log.Printf("don't have to log in : loginIsProcessing[%t] manualLogout[%d]", loginIsProcessing, manualLogout)
+						if len(presharedKeys) == 0 {
+							if !loginIsProcessing && manualLogout == 0 {
+								// user did not asked for loggout an no login is already processing
+								log.Printf("got to log in, token expired...")
+								go func() {
+									sm.SetDisabled("LOGIN", true)
+									doLogin()
+									sm.SetDisabled("LOGIN", false)
+								}()
+							} else {
+								log.Printf("don't have to log in : loginIsProcessing[%t] manualLogout[%d]", loginIsProcessing, manualLogout)
+							}
 						}
 					}
 					// if the state is not Running don't do exitNodes Check

@@ -40,7 +40,12 @@ func buildMenu() {
 	(*sm).Add(sysmenu.Melt{Id: "DISCONNECT", Label: "Disconnect", Hidden: true})
 	(*sm).Add(sysmenu.Melt{Id: "EXITNODE_ON", Label: "Activate Exit Node", Hidden: true})
 	(*sm).Add(sysmenu.Melt{Id: "EXITNODE_OFF", Label: "Disable Exit Node", Hidden: true})
-
+	(*sm).Add(sysmenu.Melt{Separator: true})
+	(*sm).Add(sysmenu.Melt{Id: "PSK1", Label: "", Hidden: true})
+	(*sm).Add(sysmenu.Melt{Id: "PSK2", Label: "", Hidden: true})
+	(*sm).Add(sysmenu.Melt{Id: "PSK3", Label: "", Hidden: true})
+	(*sm).Add(sysmenu.Melt{Id: "PSK4", Label: "", Hidden: true})
+	(*sm).Add(sysmenu.Melt{Id: "PSK5", Label: "", Hidden: true})
 	(*sm).Add(sysmenu.Melt{Separator: true})
 	(*sm).Add(sysmenu.Melt{Id: "EXIT", Label: "Exit"})
 	(*sm).Add(sysmenu.Melt{Id: "LOGOUT", Label: "Logout", Hidden: true})

@@ -11,10 +11,10 @@ import (
 type Tray struct {
 	*walk.NotifyIcon
 	// Current known tunnels by name
-	exitNodes map[string]*walk.Action
-	actions   map[string]*walk.Action
-
-	clicked func()
+	exitNodes      map[string]*walk.Action
+	actions        map[string]*walk.Action
+	triggerdefined map[string]int
+	clicked        func()
 }
 
 var tray *Tray
@@ -23,8 +23,9 @@ func NewTray(mtw *walk.MainWindow) (*Tray, error) {
 	var err error
 
 	tray := &Tray{
-		exitNodes: make(map[string]*walk.Action),
-		actions:   make(map[string]*walk.Action),
+		exitNodes:      make(map[string]*walk.Action),
+		actions:        make(map[string]*walk.Action),
+		triggerdefined: make(map[string]int),
 	}
 
 	tray.NotifyIcon, err = walk.NewNotifyIcon(mtw)
@@ -63,7 +64,14 @@ func (tray *Tray) setup() error {
 	}
 	sethnd = func(id string, e sysmenu.EvtHnd) {
 		if ta, ok := tray.actions[id]; ok == true {
+			if td, ok := tray.triggerdefined[id]; ok == true {
+				if td > 0 {
+					ta.Triggered().Detach(0)
+					tray.triggerdefined[id] = 0
+				}
+			}
 			ta.Triggered().Attach(walk.EventHandler(e))
+			tray.triggerdefined[id] = 1
 		}
 	}
 	setlbl = func(id, lbl string) {
