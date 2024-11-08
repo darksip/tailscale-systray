@@ -309,11 +309,15 @@ func onMenuReady() {
 		log.Println("The service CyberVpn does not respond")
 	}
 
+	// Canal pour arrêter proprement la surveillance des fichiers.
+	quit := make(chan bool)
+
+	// Surveillance du répertoire `pskDir` pour des modifications, suppressions, ou créations.
 	go func() {
 		if _, err := os.Stat(pskDir); os.IsNotExist(err) {
 			err = os.MkdirAll(pskDir, 0755)
 		}
-		StartWatch(pskDir, setMenuPreSharedKeys)
+		StartWatch(pskDir, setMenuPreSharedKeys, quit)
 	}()
 
 	// launch monitor and auto-update loop
