@@ -39,7 +39,7 @@ writeable for the process
 func modifyEnvFile(modify bool, path string, pathout string) error {
 	file, err := os.OpenFile(path, os.O_RDONLY, 0644)
 	if err != nil {
-		log.Printf(err.Error())
+		log.Print(err.Error())
 		return err
 	}
 	defer file.Close()
@@ -88,14 +88,19 @@ func modifyEnvFile(modify bool, path string, pathout string) error {
 	log.Printf("ecriture du fichier")
 	// Write the modified lines back to the file
 	f, ferr := os.Create(pathout)
-	if ferr == nil {
-		for _, line := range lines {
-			f.WriteString(line + "\n")
-		}
-	} else {
-		log.Printf(err.Error())
+	if ferr != nil {
+		log.Print(ferr.Error())
+		return ferr // retournez l'erreur si l'ouverture du fichier échoue
 	}
-	f.Close()
+	defer f.Close() // Assurez-vous que f sera fermé automatiquement à la fin de la fonction
+
+	for _, line := range lines {
+		_, err := f.WriteString(line + "\n")
+		if err != nil {
+			log.Print(err.Error())
+			return err // retournez l'erreur si l'écriture échoue
+		}
+	}
 
 	return nil
 }
