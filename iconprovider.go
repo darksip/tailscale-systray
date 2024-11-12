@@ -4,7 +4,7 @@ import (
 	_ "embed"
 )
 
-// TODO : have to make ppng icons for mac
+// TODO : have to make png icons for mac
 var (
 	//go:embed icon/on.png
 	iconOnPng []byte

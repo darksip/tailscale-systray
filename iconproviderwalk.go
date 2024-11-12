@@ -22,7 +22,7 @@ func extractIcons(iconPath string) {
 	embs, err := iconFS.ReadDir("icon")
 	if err == nil {
 		for _, emb := range embs {
-			log.Printf(emb.Name())
+			log.Print(emb.Name())
 			dest := fmt.Sprintf("%s\\%s", iconPath, emb.Name())
 			src := fmt.Sprintf("%s/%s", "icon", emb.Name())
 			if fcont, err := iconFS.ReadFile(src); err == nil {
