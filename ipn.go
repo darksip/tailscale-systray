@@ -17,9 +17,9 @@ import (
 type SuccessCallback func(url string)
 type FailureCallback func(err error)
 
-var (
-	prefsOfFlag = map[string][]string{} // "exit-node" => ExitNodeIP, ExitNodeID
-)
+// var (
+// 	prefsOfFlag = map[string][]string{} // "exit-node" => ExitNodeIP, ExitNodeID
+// )
 
 // Fonction pour lancer le processus "up" avec la connexion VPN.
 func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,

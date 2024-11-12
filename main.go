@@ -1,7 +1,5 @@
 package main
 
-//go:generate goversioninfo
-
 import (
 	"context"
 	"fmt"
@@ -199,6 +197,14 @@ func setMenuPreSharedKeys() (pskNumber int, err error) {
 				if idpsk > 5 {
 					log.Println("maximum de fichiers psk atteints")
 					break
+				}
+
+				// TODO: teste si le domaine est resolu au niveau dns
+				host := fmt.Sprintf("head.%s.cyberfile.fr", pskName)
+				_, err := net.LookupHost(host)
+				if err != nil {
+					log.Printf("Domaine non resolu: %s, saut de cette entree", host)
+					continue
 				}
 
 				sm.SetHandler(pskId, func() {
