@@ -89,6 +89,8 @@ func writeAuthUrl(connectionType string) {
 	errW := os.WriteFile(authUrlFile, data, 0644)
 	if errW != nil {
 		log.Printf("Error writing auth url file: %s", errW)
+	} else {
+		log.Print("authUrl.txt updated")
 	}
 }
 

@@ -179,6 +179,7 @@ func setMenuPreSharedKeys() (pskNumber int, err error) {
 	ci, err := readAuthUrl()
 	if err == nil {
 		cId = getClientId(ci)
+		log.Printf("read clientid: %s from authUrl.txt", cId)
 	}
 	// by default hide all presaredkey entry in menu
 	sm.SetHiddenAll([]string{"PSK1", "PSK2", "PSK3", "PSK4", "PSK5"}, true)
