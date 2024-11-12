@@ -17,9 +17,9 @@ import (
 type SuccessCallback func(url string)
 type FailureCallback func(err error)
 
-// var (
-// 	prefsOfFlag = map[string][]string{} // "exit-node" => ExitNodeIP, ExitNodeID
-// )
+var (
+	prefsOfFlag = map[string][]string{} // "exit-node" => ExitNodeIP, ExitNodeID
+)
 
 // Fonction pour lancer le processus "up" avec la connexion VPN.
 func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
@@ -97,6 +97,7 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 		signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
 		select {
 		case <-interrupt:
+			log.Println("Interruption signal received, cancelling watcher context...")
 			cancelWatch()
 		case <-watchCtx.Done():
 		}
@@ -105,13 +106,19 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 	running := make(chan bool, 1) // Signal pour indiquer que l'état est "Running".
 	pumpErr := make(chan error, 1)
 	var loginOnce sync.Once
-	startLoginInteractive := func() { loginOnce.Do(func() { localClient.StartLoginInteractive(ctx) }) }
+	startLoginInteractive := func() {
+		loginOnce.Do(func() {
+			log.Println("Starting interactive login...")
+			localClient.StartLoginInteractive(ctx)
+		})
+	}
 
 	log.Printf("launch watcher loop...")
 	go func() {
 		for {
 			n, err := watcher.Next()
 			if err != nil {
+				log.Printf("Watcher encountered an error: %s", err)
 				pumpErr <- err
 				return
 			}
@@ -129,7 +136,7 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 					log.Printf("\nTo authorize your machine, visit (as admin):\n\n\t%s\n\n", prefs.AdminPageURL())
 				case ipn.Running:
 					// Authentification complète terminée.
-					log.Printf("Success.\n")
+					log.Printf("Success. VPN is now running.\n")
 					select {
 					case running <- true:
 					default:
@@ -141,43 +148,50 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 			if url != nil {
 				haveToPrint := printAuthURL(*url)
 				log.Printf("have to print url : %t", haveToPrint)
-			}
-
-			if url != nil {
-				log.Printf("\nTo authenticate, visit:\n\n\t%s\n\n", *url)
-				if success != nil {
-					success(*url)
+				if haveToPrint {
+					log.Printf("\nTo authenticate, visit:\n\n\t%s\n\n", *url)
+					if success != nil {
+						success(*url)
+					}
 				}
 			}
 		}
 	}()
 
-	// Cas spécial : commande "up" simple pour démarrer.
-	if simpleUp {
-		_, err := localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
-			Prefs: ipn.Prefs{
-				WantRunning: true,
-			},
-			WantRunningSet: true,
-		})
-		if err != nil {
-			return err
-		}
-	} else {
-		if err := localClient.CheckPrefs(ctx, prefs); err != nil {
-			return err
-		}
+	// TODO: Implémentation asynchrone pour le processus de connexion
+	log.Println("Initialisation de la connexion VPN de manière asynchrone...")
+	go func() {
+		if simpleUp {
+			_, err := localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
+				Prefs: ipn.Prefs{
+					WantRunning: true,
+				},
+				WantRunningSet: true,
+			})
+			if err != nil {
+				pumpErr <- err
+				return
+			}
+			log.Println("Simple 'up' command executed.")
+		} else {
+			if err := localClient.CheckPrefs(ctx, prefs); err != nil {
+				pumpErr <- err
+				return
+			}
 
-		if err := localClient.Start(ctx, ipn.Options{
-			AuthKey:     authKey,
-			UpdatePrefs: prefs,
-		}); err != nil {
-			return err
+			if err := localClient.Start(ctx, ipn.Options{
+				AuthKey:     authKey,
+				UpdatePrefs: prefs,
+			}); err != nil {
+				pumpErr <- err
+				return
+			}
+			log.Println("Starting VPN with updated preferences...")
+			if forceReauth {
+				startLoginInteractive()
+			}
 		}
-		if forceReauth {
-			startLoginInteractive()
-		}
-	}
+	}()
 
 	// Attente de l'état "Running" ou d'une erreur.
 	var timeoutCh <-chan time.Time
@@ -188,22 +202,28 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 	}
 	select {
 	case <-running:
+		log.Println("VPN connection is now running.")
 		return nil
 	case <-watchCtx.Done():
 		select {
 		case <-running:
+			log.Println("VPN connection established after context cancellation.")
 			return nil
 		default:
 		}
+		log.Println("Watcher context done without successful connection.")
 		return watchCtx.Err()
 	case err := <-pumpErr:
 		select {
 		case <-running:
+			log.Println("VPN connection established despite pump error.")
 			return nil
 		default:
 		}
+		log.Printf("Error during connection process: %s", err)
 		return err
 	case <-timeoutCh:
+		log.Println("Timeout while waiting for VPN service to enter Running state.")
 		return errors.New(`timeout waiting for CyberVpn service to enter a Running state; check health with "cybervpn-cli status"`)
 	}
 }
@@ -218,11 +238,15 @@ func runDown(ctx context.Context) error {
 		log.Printf("Tailscale was already stopped.\n")
 		return nil
 	}
+	log.Println("Stopping VPN service...")
 	_, err = localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
 		Prefs: ipn.Prefs{
 			WantRunning: false,
 		},
 		WantRunningSet: true,
 	})
+	if err == nil {
+		log.Println("VPN service stopped successfully.")
+	}
 	return err
 }
