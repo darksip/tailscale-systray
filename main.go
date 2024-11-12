@@ -32,8 +32,8 @@ var (
 	// array of string containing pre-shared keys for authentification
 	presharedKeys = map[string]string{}
 	pskIds        = map[string]string{}
-	currentPsk    = ""
-	pskDir        = filepath.Join(appdatapath, "psks")
+	//currentPsk    = ""
+	pskDir = filepath.Join(appdatapath, "psks")
 )
 
 // tailscale local client to use for IPN
@@ -120,7 +120,7 @@ func main() {
 		log.Printf("Execution sur une plateforme serveur\non utilise la presharedkey")
 	}
 	// load environement parameters from %programdata%\.env
-	loadEnv(false)
+	loadEnv()
 
 	latencies = make(map[string][]float64)
 	movLatencies = map[string]float64{}

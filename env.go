@@ -13,20 +13,20 @@ import (
 )
 
 var (
-	clientId      = ""
+	//clientId      = ""
 	rootUrl       = "https://head.cyberfile.fr"
 	browserMethod = "RUNDLL"
 	adminUrl      = rootUrl + "/web"
 	appName       = "CyberVpn"
-	adminMode     = "off"
+	//adminMode     = "off"
 	//programdatapath   = fmt.Sprintf("%s\\%s", os.Getenv("ProgramData"), appName)
 	appdatapath = fmt.Sprintf("%s\\%s", os.Getenv("AppData"), appName)
 	//excludeCirds      = ""
-	npingsCheck       = 100
-	authKey           = ""
-	noExitNode        = 1
-	connectionTimeout = 120
-	manualLogout      = 0
+	npingsCheck = 100
+	authKey     = ""
+	noExitNode  = 1
+	//connectionTimeout = 120
+	manualLogout = 0
 )
 
 /*
@@ -105,7 +105,7 @@ func modifyEnvFile(modify bool, path string, pathout string) error {
 	return nil
 }
 
-func loadEnv(forceServer bool) {
+func loadEnv() {
 	// adapt paths regarding to ok
 	if IsMacOs() {
 		homeDir, err := os.UserHomeDir()
@@ -161,7 +161,7 @@ func loadEnv(forceServer bool) {
 			rootUrl = fmt.Sprintf("https://head.%s.cyberfile.fr", val)
 		}
 		browserMethod = os.Getenv("BROWSER_METHOD")
-		adminMode = os.Getenv("ADMIN_MODE")
+		//adminMode = os.Getenv("ADMIN_MODE")
 		authKey = os.Getenv("AUTH_KEY")
 
 		if val := os.Getenv("NPINGS"); val != "" {
@@ -169,11 +169,11 @@ func loadEnv(forceServer bool) {
 				npingsCheck = i
 			}
 		}
-		if val := os.Getenv("CONNECTION_TIMEOUT"); val != "" {
-			if i, err := strconv.Atoi(val); err == nil {
-				connectionTimeout = i
-			}
-		}
+		// if val := os.Getenv("CONNECTION_TIMEOUT"); val != "" {
+		// 	if i, err := strconv.Atoi(val); err == nil {
+		// 		connectionTimeout = i
+		// 	}
+		// }
 
 		if val := os.Getenv("NO_EXIT_NODE"); val != "" {
 			if i, err := strconv.Atoi(val); err == nil {

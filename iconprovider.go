@@ -45,5 +45,5 @@ func initGLIcons() {
 	iconsGL["greyballon"] = iconGreyBaloon
 	iconsGL["bluearrow"] = iconBlueArrow
 	iconsGL["greyarrow"] = iconGreyArrow
-
+	iconsGL["redballon"] = iconRedBaloon
 }
