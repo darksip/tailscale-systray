@@ -21,52 +21,50 @@ var (
 	prefsOfFlag = map[string][]string{} // "exit-node" => ExitNodeIP, ExitNodeID
 )
 
+// Fonction pour lancer le processus "up" avec la connexion VPN.
 func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 	forceReauth bool, authKey string, timeout time.Duration,
 	success SuccessCallback, failure FailureCallback) (retErr error) {
 
 	var simpleUp = false
 
+	// Logging de la tentative de connexion.
 	log.Printf("tentative de connexion...[%s]", cmd)
 	st, err := localClient.Status(ctx)
 	if err != nil {
 		log.Println(err.Error())
+		if failure != nil {
+			failure(err)
+		}
 		return err
 	}
 	origAuthURL := st.AuthURL
 	log.Printf("origAuthURL: %s", origAuthURL)
-	// printAuthURL reports whether we should print out the
-	// provided auth URL from an IPN notify.
+
+	// printAuthURL: Fonction pour déterminer si l'URL d'authentification doit être affichée.
 	printAuthURL := func(url string) bool {
 		if authKey != "" {
-			// Issue 1755: when using an authkey, don't
-			// show an authURL that might still be pending
-			// from a previous non-completed interactive
-			// login.
+			// Si une authKey est fournie, ne pas afficher l'URL d'authentification.
 			return false
 		}
 		if forceReauth && url == origAuthURL {
-			if url == origAuthURL {
-				log.Printf("no change in url ... skipping")
-			}
 			log.Printf("force re-auth: %t", forceReauth)
 			return false
 		}
 		return true
 	}
 
+	// Récupération des préférences actuelles du client local.
 	curPrefs, err := localClient.GetPrefs(ctx)
 	if err != nil {
 		return err
 	}
 	if cmd == "up" {
-		// "tailscale up" should not be able to change the
-		// profile name.
+		// "up" simple sans modification des préférences du profil.
 		prefs.ProfileName = curPrefs.ProfileName
 		simpleUp = true
 	} else {
-		// on veut changer le login
-
+		// Modification des préférences pour changer le login.
 		justEditMP := new(ipn.MaskedPrefs)
 		justEditMP.Prefs = *prefs
 		justEditMP.ControlURLSet = true
@@ -83,6 +81,7 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 		forceReauth = true
 	}
 
+	// Création d'un contexte annulable pour la surveillance de l'état.
 	watchCtx, cancelWatch := context.WithCancel(ctx)
 	defer cancelWatch()
 	watcher, err := localClient.WatchIPNBus(watchCtx, 0)
@@ -92,6 +91,7 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 	}
 	defer watcher.Close()
 
+	// Gestion des interruptions (ex: SIGINT, SIGTERM).
 	go func() {
 		interrupt := make(chan os.Signal, 1)
 		signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
@@ -102,10 +102,11 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 		}
 	}()
 
-	running := make(chan bool, 1) // gets value once in state ipn.Running
+	running := make(chan bool, 1) // Signal pour indiquer que l'état est "Running".
 	pumpErr := make(chan error, 1)
 	var loginOnce sync.Once
 	startLoginInteractive := func() { loginOnce.Do(func() { localClient.StartLoginInteractive(ctx) }) }
+
 	log.Printf("launch watcher loop...")
 	go func() {
 		for {
@@ -122,12 +123,12 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 				log.Printf("watcher state: %s", s)
 				switch *s {
 				case ipn.NeedsLogin, ipn.NoState:
-					log.Printf("should start login interacive")
+					log.Printf("should start login interactive")
 					startLoginInteractive()
 				case ipn.NeedsMachineAuth:
 					log.Printf("\nTo authorize your machine, visit (as admin):\n\n\t%s\n\n", prefs.AdminPageURL())
 				case ipn.Running:
-					// Done full authentication process
+					// Authentification complète terminée.
 					log.Printf("Success.\n")
 					select {
 					case running <- true:
@@ -139,7 +140,7 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 			url := n.BrowseToURL
 			if url != nil {
 				haveToPrint := printAuthURL(*url)
-				log.Printf("have to  print url : %t", haveToPrint)
+				log.Printf("have to print url : %t", haveToPrint)
 			}
 
 			if url != nil {
@@ -151,8 +152,7 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 		}
 	}()
 
-	// Special case: bare "tailscale up" means to just start
-	// running, if there's ever been a login.
+	// Cas spécial : commande "up" simple pour démarrer.
 	if simpleUp {
 		_, err := localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
 			Prefs: ipn.Prefs{
@@ -179,13 +179,7 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 		}
 	}
 
-	// This whole 'up' mechanism is too complicated and results in
-	// hairy stuff like this select. We're ultimately waiting for
-	// 'running' to be done, but even in the case where
-	// it succeeds, other parts may shut down concurrently so we
-	// need to prioritize reads from 'running' if it's
-	// readable; its send does happen before the pump mechanism
-	// shuts down. (Issue 2333)
+	// Attente de l'état "Running" ou d'une erreur.
 	var timeoutCh <-chan time.Time
 	if timeout > 0 {
 		timeoutTimer := time.NewTimer(timeout)
@@ -214,39 +208,8 @@ func runUp(ctx context.Context, cmd string, prefs *ipn.Prefs,
 	}
 }
 
-// func effectiveGOOS() string {
-// 	if v := os.Getenv("TS_DEBUG_UP_FLAG_GOOS"); v != "" {
-// 		return v
-// 	}
-// 	return runtime.GOOS
-// }
-
-// // exitNodeIP returns the exit node IP from p, using st to map
-// // it from its ID form to an IP address if needed.
-// func exitNodeIP(p *ipn.Prefs, st *ipnstate.Status) (ip netip.Addr) {
-// 	if p == nil {
-// 		return
-// 	}
-// 	if p.ExitNodeIP.IsValid() {
-// 		return p.ExitNodeIP
-// 	}
-// 	id := p.ExitNodeID
-// 	if id.IsZero() {
-// 		return
-// 	}
-// 	for _, p := range st.Peer {
-// 		if p.ID == id {
-// 			if len(p.TailscaleIPs) > 0 {
-// 				return p.TailscaleIPs[0]
-// 			}
-// 			break
-// 		}
-// 	}
-// 	return
-// }
-
+// Fonction pour arrêter le service VPN.
 func runDown(ctx context.Context) error {
-
 	st, err := localClient.Status(ctx)
 	if err != nil {
 		return fmt.Errorf("error fetching current status: %w", err)

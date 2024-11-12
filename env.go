@@ -13,18 +13,18 @@ import (
 )
 
 var (
-	clientId          = ""
-	rootUrl           = "https://head.cyberfile.fr"
-	browserMethod     = "RUNDLL"
-	adminUrl          = rootUrl + "/web"
-	appName           = "CyberVpn"
-	adminMode         = "off"
-	programdatapath   = fmt.Sprintf("%s\\%s", os.Getenv("ProgramData"), appName)
-	appdatapath       = fmt.Sprintf("%s\\%s", os.Getenv("AppData"), appName)
-	excludeCirds      = ""
+	clientId      = ""
+	rootUrl       = "https://head.cyberfile.fr"
+	browserMethod = "RUNDLL"
+	adminUrl      = rootUrl + "/web"
+	appName       = "CyberVpn"
+	adminMode     = "off"
+	//programdatapath   = fmt.Sprintf("%s\\%s", os.Getenv("ProgramData"), appName)
+	appdatapath = fmt.Sprintf("%s\\%s", os.Getenv("AppData"), appName)
+	//excludeCirds      = ""
 	npingsCheck       = 100
 	authKey           = ""
-	noExitNode        = 0
+	noExitNode        = 1
 	connectionTimeout = 120
 	manualLogout      = 0
 )
@@ -113,16 +113,16 @@ func loadEnv(forceServer bool) {
 			log.Panic("no home dir")
 		}
 
-		programdatapath = filepath.Join("/", "Libreary", "Application Support")
+		//programdatapath = filepath.Join("/", "Libreary", "Application Support")
 		appdatapath = filepath.Join(homeDir, "Libreary", "Application Support")
 	}
 
-	if _, err := os.Stat(programdatapath); os.IsNotExist(err) {
-		err := os.Mkdir(programdatapath, os.ModePerm)
-		if err != nil {
-			log.Println(err)
-		}
-	}
+	// if _, err := os.Stat(programdatapath); os.IsNotExist(err) {
+	// 	err := os.Mkdir(programdatapath, os.ModePerm)
+	// 	if err != nil {
+	// 		log.Println(err)
+	// 	}
+	// }
 	if _, err := os.Stat(appdatapath); os.IsNotExist(err) {
 		err := os.Mkdir(appdatapath, 0766)
 		if err != nil {
@@ -130,18 +130,18 @@ func loadEnv(forceServer bool) {
 		}
 	}
 
-	pdenv := programdatapath + string(os.PathSeparator) + ".env"
+	//pdenv := programdatapath + string(os.PathSeparator) + ".env"
 	adenv := appdatapath + string(os.PathSeparator) + ".env"
-	log.Printf("chargement des parametres")
-	if _, err := os.Stat(adenv); os.IsNotExist(err) {
-		if IsWindowsServer() {
-			log.Printf("modification du .env pour preshared key")
-			modifyEnvFile(true, pdenv, adenv)
-		} else {
-			modifyEnvFile(false, pdenv, adenv)
-			log.Printf("copie du .env")
-		}
-	}
+	// log.Printf("chargement des parametres")
+	// if _, err := os.Stat(adenv); os.IsNotExist(err) {
+	// 	if IsWindowsServer() {
+	// 		log.Printf("modification du .env pour preshared key")
+	// 		modifyEnvFile(true, pdenv, adenv)
+	// 	} else {
+	// 		modifyEnvFile(false, pdenv, adenv)
+	// 		log.Printf("copie du .env")
+	// 	}
+	// }
 
 	errenv := godotenv.Load(adenv)
 	if errenv != nil {
@@ -150,6 +150,7 @@ func loadEnv(forceServer bool) {
 		if ferr == nil {
 			f.WriteString("CLIENTID=\n")
 			f.WriteString("BROWSER_METHOD=RUNDLL\n")
+			f.WriteString("NO_EXIT_NODE=1\n")
 			//f.WriteString("ADMIN_MODE=off\n")
 			f.Close()
 		} else {
