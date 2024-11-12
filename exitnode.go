@@ -246,7 +246,8 @@ func setExitNodeOff() {
 func pingExitNode(exitNode *ExitNode) (string, float64) {
 	ip, err := netip.ParseAddr(exitNode.Ip)
 	if err == nil {
-		ctx, _ := context.WithTimeout(context.TODO(), 2*time.Second)
+		ctx, cancel := context.WithTimeout(context.TODO(), 2*time.Second)
+		defer cancel() // Ensure the cancel function is called when we're done
 		res, err := localClient.Ping(ctx, ip, tailcfg.PingPeerAPI)
 		if err == nil {
 			if res.LatencySeconds < 3.0 {

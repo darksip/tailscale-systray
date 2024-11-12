@@ -13,16 +13,16 @@ func TestEnvServer(t *testing.T) {
 	modifyEnvFile(true, ".env", pathOut)
 	errenv := godotenv.Load(pathOut)
 	if errenv != nil {
-		t.Fatalf(errenv.Error())
+		t.Fatal(errenv.Error())
 	} else {
 		if os.Getenv("AUTH_KEY") == "" {
-			t.Fatalf("AUTH_KEY not defined")
+			t.Fatal("AUTH_KEY not defined")
 		}
 		if os.Getenv("NO_EXIT_NODE") == "" {
-			t.Fatalf("NO_EXIT_NODE not defined")
+			t.Fatal("NO_EXIT_NODE not defined")
 		}
 		if os.Getenv("NO_EXIT_NODE") == "0" {
-			t.Fatalf("NO_EXIT_NODE bad value for server")
+			t.Fatal("NO_EXIT_NODE bad value for server")
 		}
 	}
 }
@@ -30,7 +30,7 @@ func TestEnvServer(t *testing.T) {
 func TestAutoUpdateFetch(t *testing.T) {
 	version, err := fetchContent(versionurl)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 	if len(version) < 4 {
 		t.Fatalf("bad version")
@@ -40,36 +40,36 @@ func TestAutoUpdateFetch(t *testing.T) {
 func TestCheckVersion(t *testing.T) {
 	remote, update, err := checkVersion(1, 20, 0)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 	if !update {
-		t.Fatalf("update should be true")
+		t.Fatal("update should be true")
 	}
 	if len(remote) < 4 {
-		t.Fatalf("remote should be longer")
+		t.Fatal("remote should be longer")
 	}
 }
 
 func TestDownloadVersion(t *testing.T) {
 	status, err := downloadVersion("1.20.2")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 	if len(status) < 4 {
-		t.Fatalf("status should be longer")
+		t.Fatal("status should be longer")
 	}
 }
 
 func TestCheckAndDownload(t *testing.T) {
 	status, fname, err := checkAndDownload()
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 	log.Printf("status : %s", status)
 	if len(status) < 4 {
-		t.Fatalf("status should be longer")
+		t.Fatal("status should be longer")
 	}
 	if len(fname) < 4 {
-		t.Fatalf("filename should be longer")
+		t.Fatal("filename should be longer")
 	}
 }
