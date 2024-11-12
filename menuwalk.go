@@ -14,7 +14,7 @@ type Tray struct {
 	exitNodes      map[string]*walk.Action
 	actions        map[string]*walk.Action
 	triggerdefined map[string]int
-	clicked        func()
+	//clicked        func()
 }
 
 var tray *Tray
@@ -53,18 +53,18 @@ func (tray *Tray) setup() error {
 		tray.ContextMenu().Actions().Add(action)
 	}
 	enable = func(id string, v bool) {
-		if ta, ok := tray.actions[id]; ok == true {
+		if ta, ok := tray.actions[id]; ok {
 			ta.SetEnabled(v)
 		}
 	}
 	hide = func(id string, v bool) {
-		if ta, ok := tray.actions[id]; ok == true {
+		if ta, ok := tray.actions[id]; ok {
 			ta.SetVisible(!v)
 		}
 	}
 	sethnd = func(id string, e sysmenu.EvtHnd) {
-		if ta, ok := tray.actions[id]; ok == true {
-			if td, ok := tray.triggerdefined[id]; ok == true {
+		if ta, ok := tray.actions[id]; ok {
+			if td, ok := tray.triggerdefined[id]; ok {
 				if td > 0 {
 					ta.Triggered().Detach(0)
 					tray.triggerdefined[id] = 0
@@ -75,7 +75,7 @@ func (tray *Tray) setup() error {
 		}
 	}
 	setlbl = func(id, lbl string) {
-		if ta, ok := tray.actions[id]; ok == true {
+		if ta, ok := tray.actions[id]; ok {
 			ta.SetText(lbl)
 		}
 	}
@@ -85,7 +85,7 @@ func (tray *Tray) setup() error {
 				tray.SetIcon(icon)
 			}
 		}
-		if ta, ok := tray.actions[id]; ok == true {
+		if ta, ok := tray.actions[id]; ok {
 			if icon, ok := iconsWalk[iconame]; ok {
 				ta.SetImage(icon)
 			} else {
@@ -95,7 +95,7 @@ func (tray *Tray) setup() error {
 		}
 	}
 	//icon, err := walk.Resources.Icon("icon/bluebaloon.ico")
-	icon, _ := iconsWalk["on"]
+	icon := iconsWalk["on"]
 	tray.SetIcon(icon)
 	tray.SetVisible(true)
 
@@ -131,7 +131,9 @@ func RunWalk() {
 	}
 	//	icon, err := walk.Resources.Icon("icon/on.ico")
 	tray, err = NewTray(mw)
-
+	if err != nil {
+		log.Fatal(err)
+	}
 	onMenuReady()
 
 	mw.Run()

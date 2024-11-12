@@ -130,6 +130,7 @@ func main() {
 	iconOff = iconOffIco
 
 	if len(os.Args) > 1 {
+		// en cas d'appel suite a double clic sur un fichier psk
 		err := copyEnvFile(os.Args[1])
 		if err != nil {
 			log.Println(err)
