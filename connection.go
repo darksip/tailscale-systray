@@ -14,11 +14,6 @@ var (
 	loginIsProcessing = false
 )
 
-// func getBackenState() string {
-// 	st, _ := localClient.Status(context.TODO())
-// 	return st.BackendState
-// }
-
 func disconnectReconnect() {
 	doDisconnect()
 	time.Sleep(5 * time.Second)
@@ -73,9 +68,6 @@ func doLogin() {
 	}
 
 	writeAuthUrl(ct)
-	// check for the needs of a needs of an exit node
-	//setExitNode()
-	//log.Print(exitNodeParam)
 }
 
 // Function to write auth url to file after successful login
